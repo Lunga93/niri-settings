@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/*
+ * Niri Settings — Custom Theme
+ * Based on the Quickshell Manatee design system:
+ *   warm dark surface palette, rounded corners, smooth motion.
+ */
+
+@theme {
+  /* ── Surface palette (warm dark) ── */
+  --color-surface-window: #1a1611;
+  --color-surface-titlebar: #231d16;
+  --color-surface-sidebar: #15110c;
+  --color-surface-content: #1a1611;
+  --color-surface-elevated: #221c14;
+  --color-surface-hover: rgba(255, 255, 255, 0.08);
+  --color-surface-active: rgba(255, 255, 255, 0.12);
+
+  /* ── Text ── */
+  --color-text-header: #f5ede0;
+  --color-text-body: #d6cfc4;
+  --color-text-subtitle: #8a8175;
+  --color-text-muted: #5c554b;
+
+  /* ── Accent ── */
+  --color-accent: #0a84ff;
+  --color-accent-soft: rgba(10, 132, 255, 0.18);
+  --color-accent-hover: rgba(10, 132, 255, 0.28);
+
+  /* ── Semantic ── */
+  --color-danger: #ff453a;
+  --color-danger-soft: rgba(255, 69, 58, 0.18);
+  --color-success: #22c55e;
+  --color-success-soft: rgba(34, 197, 94, 0.18);
+  --color-warn: #ffd60a;
+
+  /* ── Border ── */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ── Radius ── */
+  --radius-card: 18px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  /* ── Fonts ── */
+  --font-sans: "Fira Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "MesloLGS Nerd Font Mono", "Fira Code", monospace;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+
+/* ── Base ── */
+body {
+  font-family: var(--font-sans);
+  background: var(--color-surface-window);
+  color: var(--color-text-body);
+  -webkit-font-smoothing: antialiased;
+}

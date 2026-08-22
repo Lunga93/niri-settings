@@ -1,0 +1,30 @@
+# Node
+node_modules/
+dist/
+coverage/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/schemas
+
+# Go sidecar build output (rebuild with: go build ./sidecar)
+src-tauri/binaries/
+sidecar/niri-settings-sidecar*
+
+# Husky generated shims
+.husky/_/
+
+# Editors & tools
+.idea/
+.vscode/
+*.swp
+
+# Obsidian workspace state
+docs/.obsidian/
+
+# Env & OS
+.env
+.env.*
+*.local
+.DS_Store
+Thumbs.db
