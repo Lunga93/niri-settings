@@ -29,3 +29,8 @@ func SetGSetting(schema, key, value string) error {
 	}
 	return nil
 }
+
+// SetWallpaper invokes ~/.local/bin/set-wallpaper or set-wallpaper with the specified wallpaper path.
+func SetWallpaper(wallpaperPath string) error {
+	return ExecScript(fmt.Sprintf("~/.local/bin/set-wallpaper %q", wallpaperPath))
+}

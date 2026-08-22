@@ -12,6 +12,13 @@ export const normalizeError = (err: unknown): AppError => {
     }
   }
 
+  if (typeof err === "string") {
+    return {
+      code: "IPC_ERROR",
+      message: err,
+    };
+  }
+
   if (err instanceof Error) {
     return {
       code: "UNKNOWN_ERROR",
@@ -27,7 +34,7 @@ export const normalizeError = (err: unknown): AppError => {
 };
 
 interface ZodSchema<T> {
-  safeParse: (data: unknown) => { success: true; data: T } | { success: false };
+  safeParse: (data: unknown) => { success: true; data: T } | { success: false; error?: unknown };
 }
 
 /**
@@ -38,7 +45,8 @@ export const invokeSidecar = async <T>(
   schema: ZodSchema<T>,
   args?: Record<string, unknown>,
 ): Promise<T> => {
-  sidecarLogger.debug(`invokeSidecar: ${command}`, args);
+  const start = performance.now();
+  sidecarLogger.debug(`[IPC] → invokeSidecar: ${command}`, args);
 
   let raw: unknown;
   try {
@@ -48,20 +56,27 @@ export const invokeSidecar = async <T>(
       args: args ?? {},
     });
   } catch (err) {
+    const elapsed = (performance.now() - start).toFixed(1);
     const appErr = normalizeError(err);
-    sidecarLogger.error(`Sidecar command "${command}" failed`, appErr);
+    sidecarLogger.error(`[IPC] ✖ invokeSidecar "${command}" failed (${elapsed}ms)`, appErr);
     throw appErr;
   }
 
   const result = schema.safeParse(raw);
+  const elapsed = (performance.now() - start).toFixed(1);
   if (!result.success) {
-    sidecarLogger.error(`Schema validation failed for ${command}`, result);
+    sidecarLogger.error(
+      `[IPC] ✖ Schema validation failed for "${command}" (${elapsed}ms)`,
+      result.error ?? raw,
+    );
     throw {
       code: "SCHEMA_VALIDATION_ERROR",
       message: `Invalid response from sidecar command "${command}"`,
       details: raw,
     } satisfies AppError;
   }
+
+  sidecarLogger.debug(`[IPC] ✓ invokeSidecar: ${command} (${elapsed}ms)`);
   return result.data;
 };
 
@@ -72,14 +87,19 @@ export const invokeRaw = async (
   command: string,
   args?: Record<string, unknown>,
 ): Promise<unknown> => {
-  sidecarLogger.debug(`invokeRaw: ${command}`, args);
+  const start = performance.now();
+  sidecarLogger.debug(`[IPC] → invokeRaw: ${command}`, args);
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    return await invoke("sidecar_command", { command, args: args ?? {} });
+    const result = await invoke("sidecar_command", { command, args: args ?? {} });
+    const elapsed = (performance.now() - start).toFixed(1);
+    sidecarLogger.debug(`[IPC] ✓ invokeRaw: ${command} (${elapsed}ms)`);
+    return result;
   } catch (err) {
+    const elapsed = (performance.now() - start).toFixed(1);
     const appErr = normalizeError(err);
-    sidecarLogger.error(`Sidecar command "${command}" failed`, appErr);
+    sidecarLogger.error(`[IPC] ✖ invokeRaw "${command}" failed (${elapsed}ms)`, appErr);
     throw appErr;
   }
 };
@@ -88,8 +108,17 @@ export const invokeRaw = async (
  * Executes a shell script via the sidecar.
  */
 export const execScript = async (script: string): Promise<void> => {
-  sidecarLogger.debug(`execScript: ${script}`);
-  await invokeRaw("exec_script", { script });
+  const start = performance.now();
+  sidecarLogger.debug(`[SCRIPT] → execScript: ${script}`);
+  try {
+    await invokeRaw("exec_script", { script });
+    const elapsed = (performance.now() - start).toFixed(1);
+    sidecarLogger.debug(`[SCRIPT] ✓ execScript finished (${elapsed}ms): ${script}`);
+  } catch (err) {
+    const elapsed = (performance.now() - start).toFixed(1);
+    sidecarLogger.error(`[SCRIPT] ✖ execScript failed (${elapsed}ms): ${script}`, err);
+    throw err;
+  }
 };
 
 /**

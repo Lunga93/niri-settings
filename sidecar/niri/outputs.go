@@ -12,20 +12,20 @@ import (
 
 // Output represents a display output from niri.
 type Output struct {
-	Name       string   `json:"name"`
-	FullName   string   `json:"full_name"`
-	Connector  string   `json:"connector"`
-	Enabled    bool     `json:"enabled"`
-	Width      int      `json:"width"`
-	Height     int      `json:"height"`
-	RefreshHz  int      `json:"refresh_hz"`
-	Scale      float64  `json:"scale"`
-	X          int      `json:"x"`
-	Y          int      `json:"y"`
-	Transform  string   `json:"transform"`
-	CurrentMode string  `json:"current_mode"`
-	Modes      []string `json:"modes"`
-	Focused    bool     `json:"focused"`
+	Name        string   `json:"name"`
+	FullName    string   `json:"full_name"`
+	Connector   string   `json:"connector"`
+	Enabled     bool     `json:"enabled"`
+	Width       int      `json:"width"`
+	Height      int      `json:"height"`
+	RefreshHz   int      `json:"refresh_hz"`
+	Scale       float64  `json:"scale"`
+	X           int      `json:"x"`
+	Y           int      `json:"y"`
+	Transform   string   `json:"transform"`
+	CurrentMode string   `json:"current_mode"`
+	Modes       []string `json:"modes"`
+	Focused     bool     `json:"focused"`
 }
 
 // DisplayLayoutConfig represents layout settings for a single output.
@@ -83,13 +83,13 @@ func parseOutputs(raw string) []Output {
 				displayName = fullName
 			}
 			current = &Output{
-				Name:        displayName,
-				FullName:    fullName,
-				Connector:   connector,
-				Enabled:     true,
-				Transform:   "normal",
-				Scale:       1.0,
-				Modes:       make([]string, 0),
+				Name:      displayName,
+				FullName:  fullName,
+				Connector: connector,
+				Enabled:   true,
+				Transform: "normal",
+				Scale:     1.0,
+				Modes:     make([]string, 0),
 			}
 			continue
 		}
