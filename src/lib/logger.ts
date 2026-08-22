@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
-type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
-interface LogEntry {
+export interface LogEntry {
   level: LogLevel;
   message: string;
   context?: string;
@@ -17,7 +17,15 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-const MIN_LEVEL: LogLevel = import.meta.env.DEV ? "debug" : "info";
+const MIN_LEVEL: LogLevel = import.meta.env?.DEV ? "debug" : "info";
+
+const MAX_LOG_HISTORY = 500;
+const logHistory: LogEntry[] = [];
+
+export const getRecentLogs = (): readonly LogEntry[] => logHistory;
+export const clearLogs = (): void => {
+  logHistory.length = 0;
+};
 
 const formatTimestamp = (ts: number): string => {
   return new Date(ts).toISOString().slice(11, 23);
@@ -35,12 +43,9 @@ const createLogger = (
   info: (msg: string, data?: unknown) => void;
   warn: (msg: string, data?: unknown) => void;
   error: (msg: string, data?: unknown) => void;
+  time: <T>(label: string, fn: () => Promise<T>) => Promise<T>;
 } => {
   const log = (level: LogLevel, message: string, data?: unknown): void => {
-    if (LOG_LEVELS[level] < LOG_LEVELS[MIN_LEVEL]) {
-      return;
-    }
-
     const entry: LogEntry = {
       level,
       message,
@@ -49,21 +54,61 @@ const createLogger = (
       data,
     };
 
+    logHistory.push(entry);
+    if (logHistory.length > MAX_LOG_HISTORY) {
+      logHistory.shift();
+    }
+
+    if (LOG_LEVELS[level] < LOG_LEVELS[MIN_LEVEL]) {
+      return;
+    }
+
     const formatted = formatMessage(entry);
 
     switch (level) {
       case "debug":
-        console.debug(formatted, data ?? "");
+        if (data !== undefined) {
+          console.debug(formatted, data);
+        } else {
+          console.debug(formatted);
+        }
         break;
       case "info":
-        console.info(formatted, data ?? "");
+        if (data !== undefined) {
+          console.info(formatted, data);
+        } else {
+          console.info(formatted);
+        }
         break;
       case "warn":
-        console.warn(formatted, data ?? "");
+        if (data !== undefined) {
+          console.warn(formatted, data);
+        } else {
+          console.warn(formatted);
+        }
         break;
       case "error":
-        console.error(formatted, data ?? "");
+        if (data !== undefined) {
+          console.error(formatted, data);
+        } else {
+          console.error(formatted);
+        }
         break;
+    }
+  };
+
+  const time = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
+    const start = performance.now();
+    log("debug", `→ ${label} started`);
+    try {
+      const result = await fn();
+      const elapsed = (performance.now() - start).toFixed(1);
+      log("debug", `✓ ${label} completed in ${elapsed}ms`);
+      return result;
+    } catch (err) {
+      const elapsed = (performance.now() - start).toFixed(1);
+      log("error", `✖ ${label} failed after ${elapsed}ms`, err);
+      throw err;
     }
   };
 
@@ -72,6 +117,7 @@ const createLogger = (
     info: (msg: string, data?: unknown): void => log("info", msg, data),
     warn: (msg: string, data?: unknown): void => log("warn", msg, data),
     error: (msg: string, data?: unknown): void => log("error", msg, data),
+    time,
   };
 };
 
