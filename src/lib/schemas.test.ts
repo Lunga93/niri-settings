@@ -9,6 +9,7 @@ import {
   SoundSettingsSchema,
   DisplayOutputSchema,
   KeybindingSchema,
+  WallpaperInfoSchema,
   AppErrorSchema,
   parseSettings,
   parseDisplayOutputs,
@@ -373,6 +374,35 @@ describe("KeybindingSchema", () => {
 
   it("rejects missing key", () => {
     expect(KeybindingSchema.safeParse({ action: "close-window" }).success).toBe(false);
+  });
+});
+
+// ── WallpaperInfoSchema ──
+
+describe("WallpaperInfoSchema", () => {
+  it("parses empty object with defaults", () => {
+    const info = WallpaperInfoSchema.parse({});
+    expect(info.current_wallpaper).toBe("");
+    expect(info.image_base64).toBe("");
+    expect(info.total_scanned).toBe(0);
+    expect(info.mood_counts).toEqual({});
+    expect(info.wallpapers_by_mood).toEqual({});
+    expect(info.skip_today).toBe(false);
+  });
+
+  it("parses populated wallpaper info", () => {
+    const info = WallpaperInfoSchema.parse({
+      current_wallpaper: "/home/user/Pictures/wallpapers/daily.jpg",
+      image_base64: "data:image/jpeg;base64,123",
+      total_scanned: 50,
+      mood_counts: { dark: 20, light: 10 },
+      wallpapers_by_mood: { dark: ["/path1"] },
+      skip_today: true,
+    });
+    expect(info.current_wallpaper).toBe("/home/user/Pictures/wallpapers/daily.jpg");
+    expect(info.total_scanned).toBe(50);
+    expect(info.mood_counts.dark).toBe(20);
+    expect(info.skip_today).toBe(true);
   });
 });
 

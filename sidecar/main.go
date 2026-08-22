@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"niri-settings-sidecar/config"
 	"niri-settings-sidecar/niri"
@@ -31,6 +34,21 @@ type Response struct {
 type Request struct {
 	Command string                 `json:"command"`
 	Args    map[string]interface{} `json:"args"`
+}
+
+func expandPath(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			return filepath.Join(home, path[2:])
+		}
+	} else if path == "~" {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			return home
+		}
+	}
+	return path
 }
 
 func writeResponse(w io.Writer, data interface{}) {
@@ -103,6 +121,8 @@ func main() {
 		handleWriteFile(req.Args)
 	case "open_file":
 		handleOpenFile(req.Args)
+	case "get_wallpaper_info":
+		handleGetWallpaperInfo()
 	default:
 		writeError(os.Stdout, "UNKNOWN_COMMAND", fmt.Sprintf("Unknown command: %s", req.Command), nil)
 		os.Exit(1)
@@ -311,9 +331,10 @@ func handleReadFile(args map[string]interface{}) {
 		return
 	}
 
-	data, err := os.ReadFile(path)
+	resolvedPath := expandPath(path)
+	data, err := os.ReadFile(resolvedPath)
 	if err != nil {
-		writeError(os.Stdout, "FILE_READ_ERROR", fmt.Sprintf("Failed to read %s: %v", path, err), nil)
+		writeError(os.Stdout, "FILE_READ_ERROR", fmt.Sprintf("Failed to read %s: %v", resolvedPath, err), nil)
 		return
 	}
 	writeResponse(os.Stdout, string(data))
@@ -331,17 +352,18 @@ func handleWriteFile(args map[string]interface{}) {
 		return
 	}
 
-	dir := filepath.Dir(path)
+	resolvedPath := expandPath(path)
+	dir := filepath.Dir(resolvedPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		writeError(os.Stdout, "DIR_CREATE_ERROR", fmt.Sprintf("Failed to create dir %s: %v", dir, err), nil)
 		return
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		writeError(os.Stdout, "FILE_WRITE_ERROR", fmt.Sprintf("Failed to write %s: %v", path, err), nil)
+	if err := os.WriteFile(resolvedPath, []byte(content), 0644); err != nil {
+		writeError(os.Stdout, "FILE_WRITE_ERROR", fmt.Sprintf("Failed to write %s: %v", resolvedPath, err), nil)
 		return
 	}
-	writeResponse(os.Stdout, map[string]string{"status": "ok", "path": path})
+	writeResponse(os.Stdout, map[string]string{"status": "ok", "path": resolvedPath})
 }
 
 func handleOpenFile(args map[string]interface{}) {
@@ -351,13 +373,14 @@ func handleOpenFile(args map[string]interface{}) {
 		return
 	}
 
+	resolvedPath := expandPath(path)
 	// Only launchers that can attach to the desktop environment work here:
 	// the sidecar has no controlling TTY, so terminal editors (nvim, vim,
 	// nano) would die immediately with stdin/stdout disconnected.
 	editors := []string{"code", "xdg-open"}
 	var lastErr error
 	for _, editor := range editors {
-		cmd := exec.Command(editor, path)
+		cmd := exec.Command(editor, resolvedPath)
 		if err := cmd.Start(); err != nil {
 			lastErr = err
 			continue
@@ -365,5 +388,108 @@ func handleOpenFile(args map[string]interface{}) {
 		writeResponse(os.Stdout, map[string]string{"status": "ok", "editor": editor})
 		return
 	}
-	writeError(os.Stdout, "NO_EDITOR", fmt.Sprintf("Failed to open %s: %v", path, lastErr), nil)
+	writeError(os.Stdout, "NO_EDITOR", fmt.Sprintf("Failed to open %s: %v", resolvedPath, lastErr), nil)
+}
+
+type WallpaperMoodStats struct {
+	LAvg float64 `json:"L_avg"`
+	CAvg float64 `json:"C_avg"`
+	HDom float64 `json:"h_dom"`
+}
+
+type WallpaperTagEntry struct {
+	MTime float64            `json:"mtime"`
+	Moods []string           `json:"moods"`
+	Stats WallpaperMoodStats `json:"stats"`
+}
+
+type WallpaperMoodsCacheFile struct {
+	Version int                          `json:"version"`
+	Tags    map[string]WallpaperTagEntry `json:"tags"`
+}
+
+func handleGetWallpaperInfo() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		writeError(os.Stdout, "USER_DIR_ERROR", "Could not get user home directory", nil)
+		return
+	}
+
+	currentPath := ""
+	currentFile := filepath.Join(home, ".config", "current_wallpaper")
+	if data, err := os.ReadFile(currentFile); err == nil {
+		currentPath = strings.TrimSpace(string(data))
+	}
+	if currentPath == "" {
+		fallback := filepath.Join(home, "Pictures", "wallpapers", "daily.jpg")
+		if _, err := os.Stat(fallback); err == nil {
+			currentPath = fallback
+		}
+	}
+
+	var imageBase64 string
+	if currentPath != "" {
+		resolvedImgPath := expandPath(currentPath)
+		if imgData, err := os.ReadFile(resolvedImgPath); err == nil && len(imgData) > 0 {
+			ext := strings.ToLower(filepath.Ext(resolvedImgPath))
+			mime := "image/jpeg"
+			if ext == ".png" {
+				mime = "image/png"
+			} else if ext == ".webp" {
+				mime = "image/webp"
+			}
+			imageBase64 = fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(imgData))
+		}
+	}
+
+	moodCounts := map[string]int{
+		"dark":  0,
+		"light": 0,
+		"warm":  0,
+		"cool":  0,
+		"sky":   0,
+		"earth": 0,
+	}
+	wallpapersByMood := map[string][]string{
+		"dark":  {},
+		"light": {},
+		"warm":  {},
+		"cool":  {},
+		"sky":   {},
+		"earth": {},
+	}
+	totalScanned := 0
+
+	cachePath := filepath.Join(home, ".cache", "dotfiles", "wallpaper-moods.json")
+	if cacheData, err := os.ReadFile(cachePath); err == nil {
+		var cache WallpaperMoodsCacheFile
+		if err := json.Unmarshal(cacheData, &cache); err == nil {
+			totalScanned = len(cache.Tags)
+			for path, entry := range cache.Tags {
+				for _, m := range entry.Moods {
+					mLower := strings.ToLower(m)
+					moodCounts[mLower]++
+					wallpapersByMood[mLower] = append(wallpapersByMood[mLower], path)
+				}
+			}
+		}
+	}
+
+	skipToday := false
+	skipFile := filepath.Join(home, ".local", "share", "dotfiles", "skip_today")
+	if skipData, err := os.ReadFile(skipFile); err == nil {
+		todayStr := time.Now().Format("2006-01-02")
+		if strings.TrimSpace(string(skipData)) == todayStr {
+			skipToday = true
+		}
+	}
+
+	writeResponse(os.Stdout, map[string]interface{}{
+		"current_wallpaper":  currentPath,
+		"image_base64":       imageBase64,
+		"total_scanned":      totalScanned,
+		"mood_counts":        moodCounts,
+		"wallpapers_by_mood": wallpapersByMood,
+		"skip_today":         skipToday,
+	})
 }

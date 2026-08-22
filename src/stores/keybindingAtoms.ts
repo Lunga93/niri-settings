@@ -2,12 +2,25 @@ import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import type { Keybinding } from "@/lib/schemas";
 
+export const normalizeAction = (action: string): string =>
+  action.replace(/["']/g, "").replace(/\s+/g, " ").trim();
+
+export const actionsMatch = (a: string, b: string): boolean => {
+  const normA = normalizeAction(a);
+  const normB = normalizeAction(b);
+  if (normA === normB) return true;
+  const spawnA = normA.replace(/^spawn-sh\s+/, "spawn ");
+  const spawnB = normB.replace(/^spawn-sh\s+/, "spawn ");
+  if (spawnA === spawnB) return true;
+  return false;
+};
+
 // ── Primitive atoms ──
 export const keybindingsAtom = atom<Keybinding[]>([]);
 
 // ── Derived atoms ──
 export const bindingForAtom = atomFamily((actionBody: string) =>
-  atom((get) => get(keybindingsAtom).find((b) => b.action === actionBody) ?? null),
+  atom((get) => get(keybindingsAtom).find((b) => actionsMatch(b.action, actionBody)) ?? null),
 );
 
 // ── Write atoms ──

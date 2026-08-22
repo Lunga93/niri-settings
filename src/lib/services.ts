@@ -1,5 +1,10 @@
 import { invokeRaw } from "./sidecar";
-import { SettingsDataSchema, type SettingsData } from "./schemas";
+import {
+  SettingsDataSchema,
+  WallpaperInfoSchema,
+  type SettingsData,
+  type WallpaperInfo,
+} from "./schemas";
 import { sidecarLogger } from "./logger";
 
 /**
@@ -238,5 +243,24 @@ export const writeKeybinding = async (
   } catch (err) {
     sidecarLogger.error("Failed to write keybinding", err);
     return false;
+  }
+};
+
+/**
+ * Retrieves wallpaper metadata and mood counts from sidecar.
+ */
+export const getWallpaperInfo = async (): Promise<WallpaperInfo | null> => {
+  sidecarLogger.info("Getting wallpaper info from sidecar");
+  try {
+    const raw = await invokeRaw("get_wallpaper_info");
+    const result = WallpaperInfoSchema.safeParse(raw);
+    if (result.success) {
+      return result.data;
+    }
+    sidecarLogger.warn("get_wallpaper_info returned unexpected shape", raw);
+    return null;
+  } catch (err) {
+    sidecarLogger.error("Failed to get wallpaper info", err);
+    return null;
   }
 };

@@ -28,6 +28,18 @@ func ReadKeybindings() ([]Keybinding, error) {
 	return parseKeybindings(string(data)), nil
 }
 
+func cleanActionStr(a string) string {
+	a = strings.ReplaceAll(a, `"`, "")
+	a = strings.ReplaceAll(a, `'`, "")
+	a = strings.TrimRight(a, ";")
+	a = strings.TrimSpace(a)
+	// Normalize spawn-sh and spawn
+	if strings.HasPrefix(a, "spawn-sh ") {
+		return "spawn " + strings.TrimPrefix(a, "spawn-sh ")
+	}
+	return a
+}
+
 // parseKeybindings extracts keybindings from KDL config content.
 func parseKeybindings(content string) []Keybinding {
 	var bindings []Keybinding
@@ -53,14 +65,11 @@ func parseKeybindings(content string) []Keybinding {
 
 			if idxEnd := strings.Index(rest, "}"); idxEnd > 0 {
 				action := strings.TrimSpace(rest[:idxEnd])
-				// Remove trailing semicolons
-				action = strings.TrimRight(action, ";")
-				// Remove quotes from spawn commands
-				action = strings.ReplaceAll(action, `"`, "")
+				cleanedAction := cleanActionStr(action)
 
-				if key != "" && action != "" {
+				if key != "" && cleanedAction != "" {
 					bindings = append(bindings, Keybinding{
-						Action: action,
+						Action: cleanedAction,
 						Key:    key,
 					})
 				}
@@ -81,27 +90,54 @@ func WriteKeybinding(oldKey, newKey, action string) error {
 	}
 
 	content := string(data)
+	targetAction := cleanActionStr(action)
 
-	// Find and replace the key binding line
-	// Look for lines like:  Mod+T { spawn "alacritty"; }
-	// Matching ignores quotes so curated actions such as
-	// `set-column-width "-10%"` match the parsed form `set-column-width -10%`.
 	lines := strings.Split(content, "\n")
 	found := false
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		flat := strings.ReplaceAll(trimmed, `"`, "")
+		if strings.HasPrefix(trimmed, "//") {
+			continue
+		}
 
-		// Check if this line contains the action we want to rebind
-		if strings.Contains(flat, action) && strings.Contains(flat, "{") {
-			// Replace the key part
-			idx := strings.Index(trimmed, "{")
-			if idx > 0 {
-				lines[i] = "    " + newKey + " " + trimmed[idx:]
-				found = true
-				break
+		idx := strings.Index(trimmed, "{")
+		if idx <= 0 {
+			continue
+		}
+
+		idxEnd := strings.Index(trimmed[idx+1:], "}")
+		if idxEnd < 0 {
+			continue
+		}
+
+		lineAction := cleanActionStr(trimmed[idx+1 : idx+1+idxEnd])
+
+		// Match either exact cleaned action, or contains if complex spawn
+		if lineAction == targetAction || strings.Contains(lineAction, targetAction) || strings.Contains(targetAction, lineAction) {
+			// Find indentation
+			indent := ""
+			for _, ch := range line {
+				if ch == ' ' || ch == '\t' {
+					indent += string(ch)
+				} else {
+					break
+				}
 			}
+			if indent == "" {
+				indent = "    "
+			}
+
+			// Preserve overlay title if present
+			keyPart := strings.TrimSpace(trimmed[:idx])
+			overlayTitle := ""
+			if tIdx := strings.Index(keyPart, "hotkey-overlay-title="); tIdx > 0 {
+				overlayTitle = " " + strings.TrimSpace(keyPart[tIdx:])
+			}
+
+			lines[i] = indent + newKey + overlayTitle + " " + trimmed[idx:]
+			found = true
+			break
 		}
 	}
 

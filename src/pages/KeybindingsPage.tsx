@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, RotateCcw, FileText } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
-import { keybindingsAtom, KEYBINDING_GROUPS } from "@/stores/keybindingAtoms";
+import { keybindingsAtom, KEYBINDING_GROUPS, actionsMatch } from "@/stores/keybindingAtoms";
 import {
   readKeybindings,
   writeKeybinding,
@@ -28,7 +28,7 @@ interface CaptureDialogProps {
 
 const KeyRow = ({ action, label, alternate, onUpdated }: KeyRowProps): React.JSX.Element => {
   const [bindings] = useAtom(keybindingsAtom);
-  const binding = bindings.find((b) => b.action === action) ?? null;
+  const binding = bindings.find((b) => actionsMatch(b.action, action)) ?? null;
   const [editing, setEditing] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
@@ -117,14 +117,17 @@ const CaptureDialog = ({
     e.stopPropagation();
 
     const parts: string[] = [];
-    if (e.ctrlKey) parts.push("Ctrl");
-    if (e.shiftKey) parts.push("Shift");
-    if (e.altKey) parts.push("Alt");
-    if (e.metaKey) parts.push("Super");
+    if (e.metaKey || e.key === "Meta") parts.push("MOD");
+    if (e.ctrlKey && e.key !== "Control") parts.push("CTRL");
+    if (e.altKey && e.key !== "Alt") parts.push("ALT");
+    if (e.shiftKey && e.key !== "Shift") parts.push("SHIFT");
 
     const key = e.key;
     if (!["Control", "Shift", "Alt", "Meta"].includes(key)) {
-      parts.push(key.length === 1 ? key.toUpperCase() : key);
+      if (key === " ") parts.push("SPACE");
+      else if (key === "Enter") parts.push("RETURN");
+      else if (key === "Escape") parts.push("ESCAPE");
+      else parts.push(key.toUpperCase());
     }
 
     if (parts.length > 0) {

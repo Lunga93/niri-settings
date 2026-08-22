@@ -1,7 +1,12 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import { SettingsDataSchema, type SettingsData } from "@/lib/schemas";
-import { writeSettings, readSettings, setGSetting } from "@/lib/services";
+import {
+  SettingsDataSchema,
+  WallpaperInfoSchema,
+  type SettingsData,
+  type WallpaperInfo,
+} from "@/lib/schemas";
+import { writeSettings, readSettings, setGSetting, getWallpaperInfo } from "@/lib/services";
 import { execScript } from "@/lib/sidecar";
 import { logger, sidecarLogger } from "@/lib/logger";
 
@@ -111,6 +116,21 @@ export const setAccentColorAtom = atom(null, (get, set, color: string) => {
       ...prev.appearance,
       accent_mode: "manual" as const,
       manual_primary: color,
+    },
+  };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  triggerSideEffects("appearance", next);
+});
+
+export const setAccentSecondaryAtom = atom(null, (get, set, color: string) => {
+  const prev = get(settingsAtom);
+  const next = {
+    ...prev,
+    appearance: {
+      ...prev.appearance,
+      accent_mode: "manual" as const,
+      manual_secondary: color,
     },
   };
   set(settingsAtom, next);
@@ -241,6 +261,24 @@ export const setInputMutedAtom = atom(null, (get, set, muted: boolean) => {
 
 // ── Wallpaper-specific write atoms ──
 
+export const DEFAULT_WALLPAPER_INFO: WallpaperInfo = WallpaperInfoSchema.parse({});
+export const wallpaperInfoAtom = atom<WallpaperInfo>(DEFAULT_WALLPAPER_INFO);
+export const wallpaperInfoLoadingAtom = atom<boolean>(false);
+
+export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
+  set(wallpaperInfoLoadingAtom, true);
+  try {
+    const info = await getWallpaperInfo();
+    if (info) {
+      set(wallpaperInfoAtom, info);
+    }
+  } catch (err) {
+    logger.warn("Failed to refresh wallpaper info", err);
+  } finally {
+    set(wallpaperInfoLoadingAtom, false);
+  }
+});
+
 export const setWallpaperFrequencyAtom = atom(null, (get, set, freq: string) => {
   const prev = get(settingsAtom);
   const next = {
@@ -249,6 +287,24 @@ export const setWallpaperFrequencyAtom = atom(null, (get, set, freq: string) => 
   };
   set(settingsAtom, next);
   writeSettings(next).catch(() => undefined);
+});
+
+export const setWallpaperSkipTodayAtom = atom(null, (get, set, skip: boolean) => {
+  const prev = get(settingsAtom);
+  const next = {
+    ...prev,
+    wallpaper: { ...prev.wallpaper, skip_today: skip },
+  };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  // Also sync skip_today file
+  if (skip) {
+    execScript(
+      `mkdir -p ~/.local/share/dotfiles && date +%F > ~/.local/share/dotfiles/skip_today`,
+    ).catch(() => undefined);
+  } else {
+    execScript(`rm -f ~/.local/share/dotfiles/skip_today`).catch(() => undefined);
+  }
 });
 
 export const setWallpaperMoodAtom = atom(null, (get, set, mood: string | null) => {

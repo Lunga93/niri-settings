@@ -18,6 +18,7 @@ sidecar/niri-settings-sidecar*
 .idea/
 .vscode/
 *.swp
+*.tsbuildinfo
 
 # Obsidian workspace state
 docs/.obsidian/
