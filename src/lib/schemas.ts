@@ -166,18 +166,6 @@ export const KeybindingSchema = z.object({
 
 export type Keybinding = z.infer<typeof KeybindingSchema>;
 
-// ── Wallpaper info schema (from sidecar) ──
-export const WallpaperInfoSchema = z.object({
-  current_wallpaper: z.string().default(""),
-  image_base64: z.string().default(""),
-  total_scanned: z.number().default(0),
-  mood_counts: z.record(z.number()).default({}),
-  wallpapers_by_mood: z.record(z.array(z.string())).default({}),
-  skip_today: z.boolean().default(false),
-});
-
-export type WallpaperInfo = z.infer<typeof WallpaperInfoSchema>;
-
 // ── Parse helpers with error handling ──
 export const parseSettings = (raw: unknown): SettingsData | null => {
   const result = SettingsDataSchema.safeParse(raw);

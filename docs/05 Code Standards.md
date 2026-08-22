@@ -9,11 +9,11 @@ Conventions actually enforced or established in this codebase, with references. 
 
 ## Non-negotiables
 
-1. **zod schemas are the contract.** Every shape crossing the IPC boundary is defined in `src/lib/schemas.ts` (`SettingsDataSchema`, `AppErrorSchema`, …). Sidecar responses must be parsed with `invokeSidecar(cmd, Schema)` — never trust raw JSON.
+1. **zod schemas are the contract.** Every shape crossing the IPC boundary is a zod schema, currently centralised in `src/lib/schemas.ts`. Target state is domain-scoped schema modules (see *Separation of concerns*). Sidecar responses must be validated with a schema — never trust raw JSON.
 2. **Services never throw.** Functions in `src/lib/services.ts` catch internally and return `null` / `false`, logging via `sidecarLogger`. Only `sidecar.ts` throws typed `AppError`s upward.
 3. **Errors are structured**, not strings: `{code, message, details}` end-to-end (Go `AppError` → Rust → TS `AppError`). Add new codes in `sidecar/main.go` and match them in the UI.
 4. **Rust stays thin.** No business logic in `src-tauri/src/lib.rs` — it is one command that pipes JSON. New system capabilities belong in the Go sidecar.
-5. **State changes go through write-atoms.** Persistence (`writeSettings`) + `triggerSideEffects` are wired into atoms in `src/lib/atoms.ts`; components never call services to save.
+5. **State changes go through write-atoms.** Persistence (`writeSettings`) + side-effect triggering are wired into atoms — per domain module (e.g. `displayAtoms.ts`), with the settings core in `src/lib/atoms.ts`; components never call services to save.
 
 ## Layer rules
 
@@ -23,6 +23,29 @@ Conventions actually enforced or established in this codebase, with references. 
 | `lib/services.ts` | `lib/sidecar`, `lib/schemas` | touch jotai atoms |
 | `lib/sidecar.ts` | `@tauri-apps/api/core`, schemas | know about specific commands' semantics |
 | `src-tauri` | – | grow new commands without a strong reason |
+
+## Separation of concerns (known debt — stay conscious of it)
+
+The codebase **started monolithic and is migrating domain-by-domain**. Be deliberate about which side of the migration your change lands on:
+
+**Current debt (do not grow it):**
+
+- `src/lib/atoms.ts` (~370 lines) mixes unrelated domains in one file: settings core + appearance + wallpaper + icons + display + sound write-atoms + the `triggerSideEffects` dispatcher.
+- `src/lib/schemas.ts` concentrates every zod contract (settings sections, wallpaper info, audio devices, keybindings, pywal theme) with their types riding along.
+
+**Established target pattern** — domain-scoped modules, already proven by `displayAtoms.ts`, `audioAtoms.ts`, `themeAtoms.ts`, and `stores/keybindingAtoms.ts`:
+
+- One module per domain owning that slice's atoms: defaults, read atoms, write atoms. Side-effect dispatch stays with the domain or moves to a dedicated `sideEffects.ts`.
+- Schemas/types live beside their domain (`lib/schemas/<domain>.ts` or `<domain>Schemas.ts`), exported next to the code that consumes them.
+- Pages/components never reach past a domain module into a shared grab-bag.
+
+**Rule going forward:** new domains always get their own modules; when touching any part of `atoms.ts`/`schemas.ts` for an unrelated reason, migrate that part out instead of growing the file. Track the full split in [[07 Roadmap]] (P1).
+
+## Formatting
+
+Enforced by Prettier via `npm run format` (`.prettierrc`) and husky + lint-staged pre-commit on staged `ts/tsx/css`. Active config: double quotes, semicolons, 2-space indent, 100-char print width, trailing commas everywhere, always-parenthesised arrow params.
+
+File-layout expectations that formatting alone won't give you: one component per `.tsx` file default-exported from its own name; colocated `*.test.ts(x)` next to the unit under test; imports ordered std-lib → packages → `@/` alias → relative, with type-only imports using `import type`.
 
 ## Naming & style
 
