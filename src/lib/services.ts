@@ -2,8 +2,13 @@ import { invokeRaw } from "./sidecar";
 import {
   SettingsDataSchema,
   WallpaperInfoSchema,
+  PywalThemeSchema,
+  AudioInfoSchema,
   type SettingsData,
   type WallpaperInfo,
+  type PywalTheme,
+  type AudioInfo,
+  type DisplayLayoutConfig,
 } from "./schemas";
 import { sidecarLogger } from "./logger";
 
@@ -262,5 +267,101 @@ export const getWallpaperInfo = async (): Promise<WallpaperInfo | null> => {
   } catch (err) {
     sidecarLogger.error("Failed to get wallpaper info", err);
     return null;
+  }
+};
+
+/**
+ * Retrieves pywal color scheme from sidecar.
+ */
+export const getThemeColors = async (): Promise<PywalTheme | null> => {
+  sidecarLogger.info("Getting theme colors from sidecar");
+  try {
+    const raw = await invokeRaw("get_theme_colors");
+    const result = PywalThemeSchema.safeParse(raw);
+    if (result.success) {
+      return result.data;
+    }
+    sidecarLogger.warn("get_theme_colors returned unexpected shape", raw);
+    return null;
+  } catch (err) {
+    sidecarLogger.error("Failed to get theme colors", err);
+    return null;
+  }
+};
+
+/**
+ * Retrieves audio devices (sinks and sources) from sidecar.
+ */
+export const getAudioDevices = async (): Promise<AudioInfo | null> => {
+  sidecarLogger.info("Getting audio devices from sidecar");
+  try {
+    const raw = await invokeRaw("get_audio_devices");
+    const result = AudioInfoSchema.safeParse(raw);
+    if (result.success) {
+      return result.data;
+    }
+    sidecarLogger.warn("get_audio_devices returned unexpected shape", raw);
+    return null;
+  } catch (err) {
+    sidecarLogger.error("Failed to get audio devices", err);
+    return null;
+  }
+};
+
+/**
+ * Sets the default audio sink or source in WirePlumber.
+ */
+export const setDefaultAudioDevice = async (id: number): Promise<boolean> => {
+  sidecarLogger.info(`Setting default audio device to ID ${id}`);
+  try {
+    await invokeRaw("set_audio_device", { id });
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to set default audio device", err);
+    return false;
+  }
+};
+
+/**
+ * Sets volume and mute state for an audio device.
+ */
+export const setAudioDeviceVolume = async (
+  id: number,
+  volume: number,
+  muted: boolean,
+): Promise<boolean> => {
+  try {
+    await invokeRaw("set_audio_volume", { id, volume, muted });
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to set audio volume", err);
+    return false;
+  }
+};
+
+/**
+ * Plays a test audio sound.
+ */
+export const testAudio = async (): Promise<boolean> => {
+  try {
+    await invokeRaw("test_audio");
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to test audio", err);
+    return false;
+  }
+};
+
+/**
+ * Applies display layout coordinates and transforms to niri and wlr-randr.
+ */
+export const applyDisplayLayout = async (displays: DisplayLayoutConfig[]): Promise<boolean> => {
+  sidecarLogger.info("Applying display layout", displays);
+  try {
+    await invokeRaw("apply_display_layout", { displays });
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to apply display layout", err);
+    return false;
   }
 };

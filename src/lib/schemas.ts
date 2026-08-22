@@ -88,17 +88,75 @@ export type SettingsData = z.infer<typeof SettingsDataSchema>;
 // ── Display output schema (from sidecar) ──
 export const DisplayOutputSchema = z.object({
   name: z.string(),
-  enabled: z.boolean(),
+  full_name: z.string().default(""),
+  connector: z.string().default(""),
+  enabled: z.boolean().default(true),
   width: z.number(),
   height: z.number(),
   refresh_hz: z.number(),
-  scale: z.number(),
-  x: z.number(),
-  y: z.number(),
-  focused: z.boolean(),
+  scale: z.number().default(1),
+  x: z.number().default(0),
+  y: z.number().default(0),
+  transform: z.string().default("normal"),
+  current_mode: z.string().default(""),
+  modes: z.array(z.string()).default([]),
+  focused: z.boolean().default(false),
 });
 
 export type DisplayOutput = z.infer<typeof DisplayOutputSchema>;
+
+export const DisplayLayoutConfigSchema = z.object({
+  name: z.string(),
+  full_name: z.string().default(""),
+  connector: z.string().default(""),
+  x: z.number(),
+  y: z.number(),
+  transform: z.string().default("normal"),
+  scale: z.number().default(1),
+  mode: z.string().default(""),
+});
+
+export type DisplayLayoutConfig = z.infer<typeof DisplayLayoutConfigSchema>;
+
+// ── Audio schemas (from sidecar) ──
+export const AudioDeviceSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  is_default: z.boolean().default(false),
+  volume: z.number().default(100),
+  muted: z.boolean().default(false),
+  device_type: z.string().default("sink"),
+});
+
+export type AudioDevice = z.infer<typeof AudioDeviceSchema>;
+
+export const AudioInfoSchema = z.object({
+  sinks: z.array(AudioDeviceSchema).default([]),
+  sources: z.array(AudioDeviceSchema).default([]),
+  default_sink_id: z.number().nullable().default(null),
+  default_source_id: z.number().nullable().default(null),
+});
+
+export type AudioInfo = z.infer<typeof AudioInfoSchema>;
+
+// ── Pywal Theme schema (from sidecar) ──
+export const PywalThemeSchema = z.object({
+  wallpaper: z.string().default(""),
+  alpha: z.string().default("100"),
+  scheme: z.string().default("dark"),
+  special: z
+    .object({
+      background: z.string().default("#12100e"),
+      foreground: z.string().default("#dfe4e9"),
+      cursor: z.string().default("#dfe4e9"),
+    })
+    .default({}),
+  colors: z.record(z.string()).default({}),
+  primary_accent: z.string().default("#0a84ff"),
+  secondary_accent: z.string().default("#bf5af2"),
+});
+
+export type PywalTheme = z.infer<typeof PywalThemeSchema>;
 
 // ── Keybinding schema (from sidecar) ──
 export const KeybindingSchema = z.object({

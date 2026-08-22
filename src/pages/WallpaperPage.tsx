@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAtom, useSetAtom } from "jotai";
 import { motion } from "framer-motion";
-import { Folder, Globe, RefreshCw, MoreHorizontal, Layers, Check, Compass } from "lucide-react";
+import { Folder, Globe, RefreshCw, MoreHorizontal, Layers, Compass } from "lucide-react";
 import ToggleSwitch from "@/components/settings/ToggleSwitch";
 import {
   wallpaperAtom,
-  appearanceAtom,
   wallpaperInfoAtom,
   wallpaperInfoLoadingAtom,
   refreshWallpaperInfoAtom,
@@ -13,38 +12,9 @@ import {
   setWallpaperSkipTodayAtom,
   setWallpaperMoodAtom,
   toggleWallpaperSourceAtom,
-  setAccentModeAtom,
-  setAccentColorAtom,
-  setAccentSecondaryAtom,
 } from "@/lib/atoms";
 import { execScript } from "@/lib/sidecar";
 import { logger } from "@/lib/logger";
-
-const PRIMARY_PALETTE = [
-  "#e57b54",
-  "#e6a15c",
-  "#bf5af2",
-  "#ff453a",
-  "#0a84ff",
-  "#30d158",
-  "#ffd60a",
-  "#64d2ff",
-  "#d6cfc4",
-  "#8a8175",
-] as const;
-
-const SECONDARY_PALETTE = [
-  "#8a8175",
-  "#d6cfc4",
-  "#e57b54",
-  "#e6a15c",
-  "#64d2ff",
-  "#0a84ff",
-  "#bf5af2",
-  "#30d158",
-  "#e0caa8",
-  "#ffffff",
-] as const;
 
 interface MoodConfig {
   readonly id: string;
@@ -90,6 +60,13 @@ const MOODS: readonly MoodConfig[] = [
     accentClass: "border-[#2d627a]",
     dotColor: "bg-[#58a7cc]",
   },
+  {
+    id: "earth",
+    label: "Earth",
+    bgClass: "bg-[#453424]",
+    accentClass: "border-[#684e36]",
+    dotColor: "bg-[#a9835a]",
+  },
 ];
 
 interface SourceItem {
@@ -110,7 +87,6 @@ const SOURCES: readonly SourceItem[] = [
 
 const WallpaperPage = (): React.JSX.Element => {
   const [wallpaper] = useAtom(wallpaperAtom);
-  const [appearance] = useAtom(appearanceAtom);
   const [info] = useAtom(wallpaperInfoAtom);
   const [loadingInfo] = useAtom(wallpaperInfoLoadingAtom);
 
@@ -119,9 +95,6 @@ const WallpaperPage = (): React.JSX.Element => {
   const setSkipToday = useSetAtom(setWallpaperSkipTodayAtom);
   const setMood = useSetAtom(setWallpaperMoodAtom);
   const toggleSource = useSetAtom(toggleWallpaperSourceAtom);
-  const setAccentMode = useSetAtom(setAccentModeAtom);
-  const setPrimaryColor = useSetAtom(setAccentColorAtom);
-  const setSecondaryColor = useSetAtom(setAccentSecondaryAtom);
 
   const [fetching, setFetching] = useState(false);
 
@@ -160,153 +133,64 @@ const WallpaperPage = (): React.JSX.Element => {
           </p>
         </div>
 
-        {/* Top Grid: Preview & Color Scheme */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Wallpaper Preview Card */}
-          <div className="flex flex-col justify-between rounded-2xl border border-border bg-surface-elevated p-4 overflow-hidden relative min-h-[220px]">
-            <div className="flex items-center justify-between z-10 mb-3">
-              <span className="flex items-center gap-1.5 rounded-full bg-surface-active/80 px-3 py-1 text-[11px] font-semibold tracking-wide text-text-body backdrop-blur-md uppercase">
-                <Compass size={12} className="text-accent" />
-                Browsing
-              </span>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={(): void => setMood(null)}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1 text-[11px] font-medium transition-all cursor-pointer ${
-                  selectedMood === null
-                    ? "border-accent/40 bg-accent/15 text-accent"
-                    : "border-border bg-surface-active text-text-subtitle hover:bg-surface-hover hover:text-text-body"
-                }`}
-              >
-                ← All wallpapers
-              </motion.button>
-            </div>
+        {/* Active Wallpaper Hero */}
+        <section className="rounded-2xl border border-border bg-surface-elevated p-4 overflow-hidden relative min-h-[320px]">
+          <div className="flex items-center justify-between z-10 mb-3">
+            <span className="flex items-center gap-1.5 rounded-full bg-surface-active/80 px-3 py-1 text-[11px] font-semibold tracking-wide text-text-body backdrop-blur-md uppercase">
+              <Compass size={12} className="text-accent" />
+              Current wallpaper
+            </span>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={(): void => setMood(null)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1 text-[11px] font-medium transition-all cursor-pointer ${
+                selectedMood === null
+                  ? "border-accent/40 bg-accent/15 text-accent"
+                  : "border-border bg-surface-active text-text-subtitle hover:bg-surface-hover hover:text-text-body"
+              }`}
+            >
+              ← All wallpapers
+            </motion.button>
+          </div>
 
-            {/* Preview Image / Fallback Container */}
-            <div className="relative flex-1 w-full min-h-[140px] rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
-              {info.image_base64 ? (
-                <img
-                  src={info.image_base64}
-                  alt="Current Wallpaper"
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-text-muted">
-                  <Layers size={28} className="opacity-40" />
-                  <span className="text-[12px]">
-                    {loadingInfo ? "Loading preview..." : "No wallpaper preview"}
-                  </span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-
-              {/* Wallpaper Count Badge */}
-              <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                <span>
-                  {moodCount} {moodCount === 1 ? "wallpaper" : "wallpapers"}
+          {/* Preview Image / Fallback Container */}
+          <div className="relative w-full min-h-[240px] rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
+            {info.image_base64 ? (
+              <img
+                src={info.image_base64}
+                alt="Current Wallpaper"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-text-muted">
+                <Layers size={28} className="opacity-40" />
+                <span className="text-[12px]">
+                  {loadingInfo ? "Loading preview..." : "No wallpaper preview"}
                 </span>
               </div>
-            </div>
-          </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
-          {/* Color Scheme Card */}
-          <div className="rounded-2xl border border-border bg-surface-elevated p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[12px] font-bold text-text-subtitle tracking-wider uppercase">
-                Color Scheme
+            {/* Wallpaper Count Badge */}
+            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+              <span>
+                {moodCount} {moodCount === 1 ? "wallpaper" : "wallpapers"}
               </span>
-
-              <div className="flex rounded-xl bg-surface-active p-0.5 border border-border">
-                <button
-                  onClick={(): void => setAccentMode("dynamic")}
-                  className={`rounded-lg px-3 py-1 text-[11px] font-medium transition-all cursor-pointer ${
-                    appearance.accent_mode === "dynamic"
-                      ? "bg-surface-hover text-text-header shadow-sm"
-                      : "text-text-subtitle hover:text-text-body"
-                  }`}
-                >
-                  Dynamic
-                </button>
-                <button
-                  onClick={(): void => setAccentMode("manual")}
-                  className={`rounded-lg px-3 py-1 text-[11px] font-medium transition-all cursor-pointer ${
-                    appearance.accent_mode === "manual"
-                      ? "bg-surface-hover text-text-header shadow-sm"
-                      : "text-text-subtitle hover:text-text-body"
-                  }`}
-                >
-                  Manual
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {/* Primary Palette */}
-              <div>
-                <div className="text-[11px] font-semibold text-text-subtitle mb-2 tracking-wide uppercase">
-                  Primary
-                </div>
-                <div className="flex items-center justify-between gap-1.5 overflow-x-auto py-1">
-                  {PRIMARY_PALETTE.map((color) => {
-                    const isSelected =
-                      appearance.manual_primary?.toLowerCase() === color.toLowerCase();
-                    return (
-                      <button
-                        key={color}
-                        onClick={(): void => setPrimaryColor(color)}
-                        className={`relative h-6.5 w-6.5 rounded-full cursor-pointer transition-transform hover:scale-110 shrink-0 ${
-                          isSelected
-                            ? "ring-2 ring-white ring-offset-2 ring-offset-surface-elevated"
-                            : ""
-                        }`}
-                        style={{ backgroundColor: color }}
-                      >
-                        {isSelected && (
-                          <Check size={12} className="mx-auto text-white drop-shadow-md" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Secondary Palette */}
-              <div>
-                <div className="text-[11px] font-semibold text-text-subtitle mb-2 tracking-wide uppercase">
-                  Secondary
-                </div>
-                <div className="flex items-center justify-between gap-1.5 overflow-x-auto py-1">
-                  {SECONDARY_PALETTE.map((color) => {
-                    const isSelected =
-                      appearance.manual_secondary?.toLowerCase() === color.toLowerCase();
-                    return (
-                      <button
-                        key={color}
-                        onClick={(): void => setSecondaryColor(color)}
-                        className={`relative h-6.5 w-6.5 rounded-full cursor-pointer transition-transform hover:scale-110 shrink-0 ${
-                          isSelected
-                            ? "ring-2 ring-white ring-offset-2 ring-offset-surface-elevated"
-                            : ""
-                        }`}
-                        style={{ backgroundColor: color }}
-                      >
-                        {isSelected && (
-                          <Check size={12} className="mx-auto text-white drop-shadow-md" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Moods Section */}
         <div className="flex flex-col gap-2.5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+          <div>
+            <h2 className="text-[13px] font-bold tracking-wide text-text-header">Browse by mood</h2>
+            <p className="mt-1 text-[11px] text-text-subtitle">
+              Choose a category to narrow down your wallpaper collection.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {MOODS.map((mood) => {
               const isSelected = selectedMood === mood.id;
               const count = info.mood_counts[mood.id] ?? 0;

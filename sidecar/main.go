@@ -11,9 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"niri-settings-sidecar/audio"
 	"niri-settings-sidecar/config"
 	"niri-settings-sidecar/niri"
 	"niri-settings-sidecar/system"
+	"niri-settings-sidecar/theme"
 )
 
 // AppError is the structured error type returned to the frontend.
@@ -123,6 +125,18 @@ func main() {
 		handleOpenFile(req.Args)
 	case "get_wallpaper_info":
 		handleGetWallpaperInfo()
+	case "get_theme_colors":
+		handleGetThemeColors()
+	case "get_audio_devices":
+		handleGetAudioDevices()
+	case "set_audio_device":
+		handleSetAudioDevice(req.Args)
+	case "set_audio_volume":
+		handleSetAudioVolume(req.Args)
+	case "test_audio":
+		handleTestAudio()
+	case "apply_display_layout":
+		handleApplyDisplayLayout(req.Args)
 	default:
 		writeError(os.Stdout, "UNKNOWN_COMMAND", fmt.Sprintf("Unknown command: %s", req.Command), nil)
 		os.Exit(1)
@@ -492,4 +506,116 @@ func handleGetWallpaperInfo() {
 		"wallpapers_by_mood": wallpapersByMood,
 		"skip_today":         skipToday,
 	})
+}
+
+func handleGetThemeColors() {
+	th, err := theme.GetThemeColors()
+	if err != nil {
+		writeError(os.Stdout, "THEME_ERROR", err.Error(), nil)
+		return
+	}
+	writeResponse(os.Stdout, th)
+}
+
+func handleGetAudioDevices() {
+	info, err := audio.GetAudioDevices()
+	if err != nil {
+		writeError(os.Stdout, "AUDIO_ERROR", err.Error(), nil)
+		return
+	}
+	writeResponse(os.Stdout, info)
+}
+
+func handleSetAudioDevice(args map[string]interface{}) {
+	var id int
+	if rawID, ok := args["id"]; ok {
+		switch v := rawID.(type) {
+		case float64:
+			id = int(v)
+		case int:
+			id = v
+		default:
+			writeError(os.Stdout, "INVALID_ARGS", "Invalid or missing 'id' argument", nil)
+			return
+		}
+	} else {
+		writeError(os.Stdout, "INVALID_ARGS", "Missing 'id' argument", nil)
+		return
+	}
+
+	if err := audio.SetDefaultAudioDevice(id); err != nil {
+		writeError(os.Stdout, "AUDIO_ERROR", err.Error(), nil)
+		return
+	}
+	writeResponse(os.Stdout, map[string]string{"status": "ok"})
+}
+
+func handleSetAudioVolume(args map[string]interface{}) {
+	var id int
+	if rawID, ok := args["id"]; ok {
+		switch v := rawID.(type) {
+		case float64:
+			id = int(v)
+		case int:
+			id = v
+		}
+	}
+
+	volume := 100
+	if rawVol, ok := args["volume"]; ok {
+		switch v := rawVol.(type) {
+		case float64:
+			volume = int(v)
+		case int:
+			volume = v
+		}
+	}
+
+	muted := false
+	if rawMuted, ok := args["muted"]; ok {
+		if b, ok := rawMuted.(bool); ok {
+			muted = b
+		}
+	}
+
+	if err := audio.SetAudioVolume(id, volume, muted); err != nil {
+		writeError(os.Stdout, "AUDIO_ERROR", err.Error(), nil)
+		return
+	}
+	writeResponse(os.Stdout, map[string]string{"status": "ok"})
+}
+
+func handleTestAudio() {
+	if err := audio.TestAudio(); err != nil {
+		writeError(os.Stdout, "AUDIO_ERROR", err.Error(), nil)
+		return
+	}
+	writeResponse(os.Stdout, map[string]string{"status": "ok"})
+}
+
+func handleApplyDisplayLayout(args map[string]interface{}) {
+	rawDisplays, ok := args["displays"]
+	if !ok {
+		writeError(os.Stdout, "INVALID_ARGS", "Missing 'displays' argument", nil)
+		return
+	}
+
+	data, err := json.Marshal(rawDisplays)
+	if err != nil {
+		writeError(os.Stdout, "INVALID_ARGS", "Failed to serialize displays", nil)
+		return
+	}
+
+	var layouts []niri.DisplayLayoutConfig
+	if err := json.Unmarshal(data, &layouts); err != nil {
+		writeError(os.Stdout, "INVALID_ARGS", "Failed to parse displays layout", nil)
+		return
+	}
+
+	if err := niri.ApplyDisplayLayout(layouts); err != nil {
+		writeError(os.Stdout, "DISPLAY_LAYOUT_ERROR", err.Error(), nil)
+		return
+	}
+
+	writeResponse(os.Stdout, map[string]string{"status": "ok"})
 }

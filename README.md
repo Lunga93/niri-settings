@@ -36,7 +36,7 @@ npm run tauri build # production bundle in src-tauri/target/release/
 Full docs live in [`docs/`](./docs/00%20Home.md) as an Obsidian vault:
 
 - [[docs/00 Home|Home]] · [[docs/01 Architecture|Architecture]] · [[docs/02 Execution Flow|Execution Flow]]
-- [[docs/03 Development Guide|Development Guide]] · [[docs/04 Building and Distribution|Building]] · [[docs/05 Code Standards|Code Standards]]
+- [[docs/03 Development Guide|Development Guide]] · [[docs/04 Building and Distribution|Building]] · [[docs/05 Code Standards|Code Standards]] · [[docs/06 Design Brief|Design Brief]]
 
 ## License
 

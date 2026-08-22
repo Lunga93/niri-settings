@@ -17,6 +17,7 @@ sidecar/niri-settings-sidecar*
 # Editors & tools
 .idea/
 .vscode/
+.junie/
 *.swp
 *.tsbuildinfo
 

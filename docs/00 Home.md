@@ -18,6 +18,7 @@ A cross-platform-styled desktop settings application for the [niri](https://gith
 | 3 | [[03 Development Guide]] | Dummy-proof setup, first run, troubleshooting |
 | 4 | [[04 Building and Distribution]] | Producing a working executable / installers |
 | 5 | [[05 Code Standards]] | Conventions, testing gates, code reference index |
+| 6 | [[06 Design Brief]] | Requirements for designers — capabilities, constraints, deliverables |
 
 ## TL;DR
 

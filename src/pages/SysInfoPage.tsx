@@ -1,16 +1,29 @@
+import React from "react";
 import { motion } from "framer-motion";
+import { Layers, Cpu, Monitor, HardDrive, Terminal, Sparkles } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
-import React from "react";
 
-const INFO_ITEMS = [
-  { label: "Compositor", value: "Niri" },
-  { label: "Shell", value: "Quickshell" },
-  { label: "OS", value: "Arch Linux (CachyOS)" },
-  { label: "Kernel", value: "Linux 6.x" },
-  { label: "Display Server", value: "Wayland" },
-  { label: "Qt Version", value: "6.x" },
-] as const;
+const INFO_GROUPS = [
+  {
+    title: "Environment & Compositor",
+    accent: "var(--color-accent)",
+    items: [
+      { label: "Compositor", value: "Niri Scrollable Tiling WM", icon: Layers },
+      { label: "Desktop Shell", value: "Quickshell Qt6 / QML", icon: Sparkles },
+      { label: "Display Protocol", value: "Wayland Native", icon: Monitor },
+    ],
+  },
+  {
+    title: "Operating System & Core",
+    accent: "#bf5af2",
+    items: [
+      { label: "Distribution", value: "CachyOS / Arch Linux", icon: HardDrive },
+      { label: "Kernel", value: "Linux 6.x (CachyOS BORE)", icon: Terminal },
+      { label: "Settings Frontend", value: "Tauri v2 + React 19", icon: Cpu },
+    ],
+  },
+];
 
 const SysInfoPage = (): React.JSX.Element => (
   <div className="h-full overflow-y-auto scrollbar-thin">
@@ -19,35 +32,35 @@ const SysInfoPage = (): React.JSX.Element => (
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="px-7 pt-5 pb-2">
-        <h1 className="text-[24px] font-bold text-text-header">System Info</h1>
-        <p className="text-[12px] text-text-subtitle mt-1">About your system and environment.</p>
+      <div className="px-7 pt-6 pb-2">
+        <h1 className="text-[24px] font-bold text-text-header tracking-tight">System Info</h1>
+        <p className="text-[12px] text-text-subtitle mt-0.5">
+          Operating system details, window manager, and shell runtime environment.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-5 p-7">
-        <SettingsGroup header="System">
-          {INFO_ITEMS.map((item, i) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.3 }}
-            >
-              <SettingsRow title={item.label}>
-                <span className="text-[12px] font-mono text-text-subtitle">{item.value}</span>
-              </SettingsRow>
-            </motion.div>
-          ))}
-        </SettingsGroup>
+      <div className="flex flex-col gap-6 p-7">
+        {INFO_GROUPS.map((group) => (
+          <SettingsGroup key={group.title} header={group.title} accent={group.accent}>
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <SettingsRow key={item.label} title={item.label}>
+                  <div className="flex items-center gap-2">
+                    <Icon size={14} className="text-accent" />
+                    <span className="text-[12px] font-semibold text-text-header">{item.value}</span>
+                  </div>
+                </SettingsRow>
+              );
+            })}
+          </SettingsGroup>
+        ))}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center text-[11px] text-text-muted py-4"
-        >
-          Niri Settings v0.1.0 — Built with Tauri + React
-        </motion.div>
+        <div className="rounded-2xl border border-border bg-surface-elevated/50 p-4 text-center">
+          <p className="text-[11px] text-text-muted">
+            Niri Settings Control Center • Powered by Pywal Theme Engine & WirePlumber
+          </p>
+        </div>
       </div>
     </motion.div>
   </div>
