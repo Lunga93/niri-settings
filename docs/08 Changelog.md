@@ -8,6 +8,36 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Sidecar monolith split into domain packages (Go standards pass)
+
+**Symptom:** `sidecar/main.go` had grown to 744 lines holding wire types, arg parsing, generic file ops, and the whole wallpaper domain — every feature meant editing the same file; untestable outside package main.
+
+**Root cause:** No structure existed beyond per-domain logic folders (`audio/`, `niri/`, …); all handlers, transport helpers, and the wallpaper catalog lived in `main.go`.
+
+**Fix:** Followed current community standards (package-by-feature over package-by-layer, thin entrypoint, shallow hierarchy, no utils dumping ground):
+
+- New `sidecar/protocol/` owns the JSON envelope (`Request`/`Response`/`AppError`, `WriteResponse`/`WriteError`, typed arg getters) — domain packages never touch stdout directly.
+- Handlers moved next to their logic: `niri/handlers.go`, `audio/handlers.go`, `system/handlers.go`, `theme/handlers.go`, new `settings/` package, and a new `wallpaper/` package (catalog + thumbs + handlers).
+- `wallpaper.Build()` returns a `Catalog` struct instead of a 4-value tuple; test moved to `wallpaper/catalog_test.go`.
+- `main.go` is now an 83-line registry dispatch (`map[string]protocol.Handler`) — adding a command = one registry row + one handler.
+- Tech debt fixed in passing: `any` replaces `interface{}`, single `os.Stat` reuse with truthful disk mtime, audio volume handler now rejects missing `id` like its sibling, encode errors logged.
+
+**Verification:** gofmt/vet/tests green, all four binary targets rebuilt, live stdio smoke test (`get_wallpaper_info` returns valid envelope, ghost-free count 106, UNKNOWN_COMMAND path intact).
+
+**Regression hints:** "Unknown command" after adding one ⇒ forgot the registry row in `main.go`. Response shape regressions ⇒ diff `protocol/protocol.go` first.
+
+## 2026-08-23 — Wallpaper page state reset on navigation
+
+**Symptom:** Leaving the Wallpaper page and returning reloaded every thumbnail (grid flashing back to skeletons), collapsed the gallery reveal back to 24 cards, and lost scroll position.
+
+**Root cause:** Two compounding issues. (1) `refreshWallpaperInfoAtom` bumped `wallpaperThumbsVersionAtom` unconditionally on every mount, even when `ensure_wallpaper_thumbs` generated nothing — each card's retry effect then cleared `imageLoaded` and re-requested all images. (2) The reveal counter was component state reset by an effect keyed on the `filteredWallpapers` array identity, which changes on every refetch/remount.
+
+**Fix:** Version bump now happens only when the sidecar reports `generated > 0` (service returns `WallpaperThumbsResult | null`). Reveal count moved into `galleryVisibleCountAtom`; it resets only when the mood filter changes and is clamped if the library shrinks. Dead code removed: unused `listWallpapers` service, `WallpaperListSchema`/`WallpaperList`.
+
+**Verification:** typecheck + 109 vitest tests (incl. new bump/no-bump regression tests) + eslint green.
+
+**Regression hints:** thumbnails flashing again ⇒ check whether anything else writes `wallpaperThumbsVersionAtom`. Note `WallpaperThumbsResult` is deliberately kept — it is the service return type.
+
 ## 2026-08-23 — Ghost wallpapers inflated counts and grid
 
 **Symptom:** Hero badge reported 123 wallpapers while the library holds ~91 files; mood counts and mood-filtered lists included images that no longer exist.
