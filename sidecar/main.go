@@ -467,6 +467,12 @@ func getWallpaperData(home string) ([]WallpaperItem, map[string]int, map[string]
 		if err := json.Unmarshal(cacheData, &cache); err == nil {
 			for path, entry := range cache.Tags {
 				resolvedPath := expandPath(path)
+				// The mood cache outlives its files; skip entries whose
+				// wallpaper was deleted or moved so ghosts never reach the
+				// catalog, mood counts, or total_scanned.
+				if fi, statErr := os.Stat(resolvedPath); statErr != nil || fi.IsDir() {
+					continue
+				}
 				var moods []string
 				for _, m := range entry.Moods {
 					mLower := strings.ToLower(m)

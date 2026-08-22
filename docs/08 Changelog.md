@@ -8,6 +8,18 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Ghost wallpapers inflated counts and grid
+
+**Symptom:** Hero badge reported 123 wallpapers while the library holds ~91 files; mood counts and mood-filtered lists included images that no longer exist.
+
+**Root cause:** `getWallpaperData` (`sidecar/main.go`) inserted **every** entry of `~/.cache/dotfiles/wallpaper-moods.json` into the catalog without checking the file still exists. The mood cache outlives deleted/moved wallpapers, so dead entries leaked into `wallpapers`, `mood_counts`, `wallpapers_by_mood`, and `total_scanned`.
+
+**Fix:** Cache loop now `os.Stat`s each resolved path and skips missing entries/directories before touching counts or the catalog. Regression test added: `sidecar/main_test.go::TestGetWallpaperDataSkipsDeadCacheEntries`.
+
+**Verification:** `go vet`, new test passing, all four sidecar binary targets rebuilt, frontend gates unaffected.
+
+**Regression hints:** counts drifting from reality again ⇒ check whether a new catalog source was added that also trusts cached paths without an existence check.
+
 ## 2026-08-23 — Wallpaper memory crash fix + thumbnail pipeline
 
 **Symptom:** Opening the Wallpaper page froze and eventually crashed the entire machine.
