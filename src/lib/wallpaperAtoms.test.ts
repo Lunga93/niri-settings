@@ -16,13 +16,15 @@ import {
   setWallpaperMoodAtom,
   setWallpaperSkipTodayAtom,
   toggleWallpaperSourceAtom,
+  wallpaperThumbsVersionAtom,
+  galleryVisibleCountAtom,
 } from "./wallpaperAtoms";
 import * as services from "./services";
 
 vi.mock("./services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
   readSettings: vi.fn().mockResolvedValue(null),
-  ensureWallpaperThumbs: vi.fn().mockResolvedValue(true),
+  ensureWallpaperThumbs: vi.fn().mockResolvedValue({ generated: 0, total: 2 }),
   getWallpaperInfo: vi.fn().mockResolvedValue({
     current_wallpaper: "/home/user/Pictures/wallpapers/forest.jpg",
     total_scanned: 10,
@@ -116,6 +118,29 @@ describe("wallpaperAtoms", () => {
     vi.mocked(services.getWallpaperInfo).mockRejectedValueOnce(new Error("Sidecar crashed"));
     await store.set(refreshWallpaperInfoAtom);
     expect(store.get(wallpaperInfoErrorAtom)).toBe("Failed to load wallpapers: Sidecar crashed");
+  });
+
+  it("refreshWallpaperInfoAtom does not bump thumbs version when nothing was generated", async () => {
+    vi.mocked(services.ensureWallpaperThumbs).mockResolvedValue({ generated: 0, total: 2 });
+    await store.set(refreshWallpaperInfoAtom);
+    expect(store.get(wallpaperThumbsVersionAtom)).toBe(0);
+  });
+
+  it("refreshWallpaperInfoAtom bumps thumbs version only when thumbnails were generated", async () => {
+    await store.set(refreshWallpaperInfoAtom);
+    expect(store.get(wallpaperThumbsVersionAtom)).toBe(0);
+
+    vi.mocked(services.ensureWallpaperThumbs).mockResolvedValueOnce({
+      generated: 3,
+      total: 2,
+    });
+    await store.set(refreshWallpaperInfoAtom);
+    expect(store.get(wallpaperThumbsVersionAtom)).toBe(1);
+  });
+
+  it("galleryVisibleCountAtom persists across store reads (page navigation)", () => {
+    store.set(galleryVisibleCountAtom, 48);
+    expect(store.get(galleryVisibleCountAtom)).toBe(48);
   });
 
   it("filteredWallpapersAtom filters correctly", async () => {

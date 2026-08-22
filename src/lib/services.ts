@@ -11,10 +11,9 @@ import {
 } from "./schemas";
 import {
   WallpaperInfoSchema,
-  WallpaperListSchema,
   WallpaperThumbsResultSchema,
   type WallpaperInfo,
-  type WallpaperItem,
+  type WallpaperThumbsResult,
 } from "./schemas/wallpaper";
 import { sidecarLogger } from "./logger";
 
@@ -287,30 +286,10 @@ export const getWallpaperInfo = async (): Promise<WallpaperInfo | null> => {
 };
 
 /**
- * Retrieves the list of indexed wallpapers from the sidecar.
- */
-export const listWallpapers = async (): Promise<WallpaperItem[]> => {
-  sidecarLogger.info("Listing wallpapers from sidecar");
-  try {
-    const raw = await invokeRaw("list_wallpapers");
-    const result = WallpaperListSchema.safeParse(raw);
-    if (result.success) {
-      return result.data.wallpapers;
-    }
-    sidecarLogger.error("list_wallpapers returned unexpected shape (schema validation failed)", {
-      issues: result.error.format(),
-    });
-    return [];
-  } catch (err) {
-    sidecarLogger.error("Failed to list wallpapers", err);
-    return [];
-  }
-};
-
-/**
  * Generates missing/stale thumbnails for the wallpaper catalog via sidecar.
+ * Returns null when the command fails or the response shape is unexpected.
  */
-export const ensureWallpaperThumbs = async (): Promise<boolean> => {
+export const ensureWallpaperThumbs = async (): Promise<WallpaperThumbsResult | null> => {
   try {
     const raw = await invokeRaw("ensure_wallpaper_thumbs");
     const result = WallpaperThumbsResultSchema.safeParse(raw);
@@ -318,15 +297,15 @@ export const ensureWallpaperThumbs = async (): Promise<boolean> => {
       sidecarLogger.info(
         `Wallpaper thumbnails ensured: ${result.data.generated} generated of ${result.data.total}`,
       );
-      return true;
+      return result.data;
     }
     sidecarLogger.warn("ensure_wallpaper_thumbs returned unexpected shape", {
       issues: result.error.format(),
     });
-    return false;
+    return null;
   } catch (err) {
     sidecarLogger.error("Failed to ensure wallpaper thumbnails", err);
-    return false;
+    return null;
   }
 };
 

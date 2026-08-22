@@ -15,7 +15,6 @@ import {
 } from "./schemas";
 import {
   WallpaperItemSchema,
-  WallpaperListSchema,
   WallpaperInfoSchema,
   WallpaperThumbsResultSchema,
 } from "./schemas/wallpaper";
@@ -382,7 +381,7 @@ describe("KeybindingSchema", () => {
   });
 });
 
-// ── WallpaperItemSchema & WallpaperListSchema ──
+// ── WallpaperItemSchema ──
 
 describe("WallpaperItemSchema", () => {
   it("parses valid wallpaper item with defaults", () => {
@@ -410,32 +409,6 @@ describe("WallpaperItemSchema", () => {
     expect(item.name).toBe("sunset");
     expect(item.moods).toEqual(["warm", "sky"]);
     expect(item.file_size).toBe(2048576);
-  });
-});
-
-describe("WallpaperListSchema", () => {
-  it("parses empty list with defaults", () => {
-    const list = WallpaperListSchema.parse({});
-    expect(list.wallpapers).toEqual([]);
-    expect(list.total).toBe(0);
-  });
-
-  it("parses list with items", () => {
-    const list = WallpaperListSchema.parse({
-      wallpapers: [
-        {
-          path: "/path1.jpg",
-          filename: "path1.jpg",
-          name: "path1",
-          moods: ["dark"],
-          file_size: 1024,
-          mtime: 12345,
-        },
-      ],
-      total: 1,
-    });
-    expect(list.wallpapers).toHaveLength(1);
-    expect(list.total).toBe(1);
   });
 });
 

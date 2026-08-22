@@ -22,6 +22,11 @@ export const wallpaperApplyingAtom = atom<boolean>(false);
 export const wallpaperApplyErrorAtom = atom<string | null>(null);
 export const selectedWallpaperPathAtom = atom<string | null>(null);
 export const wallpaperThumbsVersionAtom = atom<number>(0);
+/**
+ * How many gallery cards are revealed. Stored in an atom (not component state)
+ * so navigating away and back does not collapse the grid back to the first page.
+ */
+export const galleryVisibleCountAtom = atom<number>(24);
 
 /**
  * Wallpapers filtered by the currently active mood (or all if selected_mood is null).
@@ -94,9 +99,16 @@ export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
         `Wallpaper info loaded: ${info.total_scanned} wallpapers scanned, current: ${info.current_wallpaper || "none"}`,
       );
       try {
-        await ensureWallpaperThumbs();
-      } finally {
-        set(wallpaperThumbsVersionAtom, (v) => v + 1);
+        const result = await ensureWallpaperThumbs();
+        // Only bust card image caches when thumbnails were actually
+        // (re)generated; otherwise revisiting the page would flash the whole
+        // grid back to skeletons for no reason.
+        if (result && result.generated > 0) {
+          set(wallpaperThumbsVersionAtom, (v) => v + 1);
+        }
+      } catch {
+        // ensureWallpaperThumbs already logged via service layer; keep the
+        // info payload that did load usable.
       }
     } else {
       set(wallpaperInfoErrorAtom, "Unable to retrieve wallpapers from sidecar backend.");

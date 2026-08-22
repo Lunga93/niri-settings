@@ -31,19 +31,6 @@ export const WallpaperItemSchema = z.object({
 
 export type WallpaperItem = z.infer<typeof WallpaperItemSchema>;
 
-export const WallpaperListSchema = z.object({
-  wallpapers: z
-    .array(WallpaperItemSchema)
-    .nullish()
-    .transform((v) => v ?? []),
-  total: z
-    .number()
-    .nullish()
-    .transform((v) => v ?? 0),
-});
-
-export type WallpaperList = z.infer<typeof WallpaperListSchema>;
-
 export const WallpaperInfoSchema = z.object({
   current_wallpaper: z
     .string()

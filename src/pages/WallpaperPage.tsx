@@ -31,6 +31,7 @@ import {
   wallpaperApplyErrorAtom,
   applyWallpaperAtom,
   wallpaperThumbsVersionAtom,
+  galleryVisibleCountAtom,
 } from "@/lib/wallpaperAtoms";
 import type { WallpaperItem } from "@/lib/schemas/wallpaper";
 import { execScript } from "@/lib/sidecar";
@@ -282,12 +283,28 @@ const WallpaperPage = (): React.JSX.Element => {
   const [fetching, setFetching] = useState(false);
   const [targetApplyingPath, setTargetApplyingPath] = useState<string | null>(null);
   const thumbsVersion = useAtomValue(wallpaperThumbsVersionAtom);
-  const [visibleCount, setVisibleCount] = useState(GRID_INITIAL_COUNT);
+  // Reveal count lives in an atom so it survives navigating away and back.
+  const [visibleCount, setVisibleCount] = useAtom(galleryVisibleCountAtom);
   const gridSentinelRef = useRef<HTMLDivElement | null>(null);
+  const previousMoodRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    setVisibleCount(GRID_INITIAL_COUNT);
-  }, [filteredWallpapers]);
+    const currentMood = wallpaper.selected_mood ?? null;
+    // First run after a remount: keep whatever the atom preserved.
+    if (previousMoodRef.current === undefined) {
+      previousMoodRef.current = currentMood;
+      return;
+    }
+    // Reset the reveal window only when the mood filter changes — not on
+    // every refetch (new array identity).
+    if (previousMoodRef.current !== currentMood) {
+      previousMoodRef.current = currentMood;
+      setVisibleCount(GRID_INITIAL_COUNT);
+      return;
+    }
+    // Keep the count valid if the library shrank under it.
+    setVisibleCount((count) => Math.min(count, filteredWallpapers.length));
+  }, [wallpaper.selected_mood, filteredWallpapers.length, setVisibleCount]);
 
   useEffect(() => {
     const el = gridSentinelRef.current;
@@ -302,7 +319,7 @@ const WallpaperPage = (): React.JSX.Element => {
     );
     observer.observe(el);
     return (): void => observer.disconnect();
-  }, [visibleCount, filteredWallpapers.length]);
+  }, [visibleCount, filteredWallpapers.length, setVisibleCount]);
 
   useEffect(() => {
     void refreshInfo();
