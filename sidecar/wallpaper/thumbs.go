@@ -1,4 +1,4 @@
-package main
+package wallpaper
 
 import (
 	"bufio"
@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"niri-settings-sidecar/protocol"
 )
 
 const (
@@ -28,8 +30,8 @@ func thumbCacheDir(home string) string {
 	return filepath.Join(home, ".cache", "dotfiles", "thumbs")
 }
 
-// thumbnailPathFor returns a deterministic cache path for a source image.
-func thumbnailPathFor(home, src string) string {
+// ThumbnailPathFor returns a deterministic cache path for a source image.
+func ThumbnailPathFor(home, src string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(src))
 	return filepath.Join(thumbCacheDir(home), fmt.Sprintf("%016x.jpg", h.Sum64()))
@@ -38,7 +40,7 @@ func thumbnailPathFor(home, src string) string {
 // ensureThumbnail makes sure a fresh thumbnail exists for src and returns its
 // path. It regenerates when the thumbnail is missing or older than the source.
 func ensureThumbnail(home, src string) (string, error) {
-	dst := thumbnailPathFor(home, src)
+	dst := ThumbnailPathFor(home, src)
 	if dstInfo, err := os.Stat(dst); err == nil {
 		if srcInfo, err := os.Stat(src); err == nil && !dstInfo.ModTime().Before(srcInfo.ModTime()) {
 			return dst, nil
@@ -209,21 +211,20 @@ func generateThumbnailsConcurrent(home string, sources []string) int {
 	return int(generated.Load())
 }
 
-// handleEnsureWallpaperThumbs generates thumbnails for every known wallpaper.
-func handleEnsureWallpaperThumbs() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		writeError(os.Stdout, "USER_DIR_ERROR", "Could not get user home directory", nil)
+// HandleEnsureThumbs generates thumbnails for every known wallpaper.
+func HandleEnsureThumbs(_ map[string]any) {
+	home := protocol.HomeDir("USER_DIR_ERROR")
+	if home == "" {
 		return
 	}
-	wallpapers, _, _, total := getWallpaperData(home)
-	sources := make([]string, 0, len(wallpapers))
-	for _, w := range wallpapers {
+	catalog := Build(home)
+	sources := make([]string, 0, len(catalog.Items))
+	for _, w := range catalog.Items {
 		sources = append(sources, w.Path)
 	}
 	generated := generateThumbnailsConcurrent(home, sources)
-	writeResponse(os.Stdout, map[string]interface{}{
+	protocol.WriteResponse(map[string]any{
 		"generated": generated,
-		"total":     total,
+		"total":     catalog.Total,
 	})
 }

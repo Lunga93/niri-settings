@@ -1,4 +1,4 @@
-package main
+package wallpaper
 
 import (
 	"encoding/json"
@@ -26,9 +26,9 @@ func TestGetWallpaperDataSkipsDeadCacheEntries(t *testing.T) {
 	}
 	dead := filepath.Join(wallpapersDir, "deleted.jpg")
 
-	cache := WallpaperMoodsCacheFile{
+	cache := moodsCacheFile{
 		Version: 1,
-		Tags: map[string]WallpaperTagEntry{
+		Tags: map[string]tagEntry{
 			live: {Moods: []string{"dark", "sky"}},
 			dead: {Moods: []string{"warm"}},
 		},
@@ -41,7 +41,8 @@ func TestGetWallpaperDataSkipsDeadCacheEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wallpapers, moodCounts, byMood, total := getWallpaperData(home)
+	result := Build(home)
+	wallpapers, moodCounts, byMood, total := result.Items, result.MoodCount, result.ByMood, result.Total
 
 	const wantTotal = 2
 	if total != wantTotal {
