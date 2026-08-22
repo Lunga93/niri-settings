@@ -31,6 +31,7 @@ export const WallpaperSettingsSchema = z.object({
   favorites: z.array(z.string()).default([]),
   library_dir: z.string().default(""),
   selected_mood: z.string().nullable().default(null),
+  custom_subreddits: z.array(z.string()).default([]),
 });
 
 export const AppearanceSettingsSchema = z.object({

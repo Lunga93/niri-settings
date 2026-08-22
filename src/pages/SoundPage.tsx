@@ -10,6 +10,7 @@ import {
   setInputVolumeAtom,
   setInputMutedAtom,
 } from "@/lib/atoms";
+import React from "react";
 
 const SoundPage = (): React.JSX.Element => {
   const [sound] = useAtom(soundAtom);
@@ -33,7 +34,7 @@ const SoundPage = (): React.JSX.Element => {
         <div className="flex flex-col gap-5 p-7">
           <SettingsGroup header="Output">
             <SettingsRow title="Volume" description="Main output volume.">
-              <div className="flex items-center gap-3 w-[260px]">
+              <div className="flex items-center gap-3 w-65">
                 <SettingsSlider
                   value={sound.output_volume}
                   min={0}
@@ -47,12 +48,12 @@ const SoundPage = (): React.JSX.Element => {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={(): void => setOutputMuted(!sound.output_muted)}
-                className={`h-[26px] w-[46px] shrink-0 rounded-full p-[3px] transition-colors duration-200 cursor-pointer ${
+                className={`h-6.5 w-11.5 shrink-0 rounded-full p-0.75 transition-colors duration-200 cursor-pointer ${
                   sound.output_muted ? "bg-danger" : "bg-surface-active"
                 }`}
               >
                 <motion.div
-                  className="h-[20px] w-[20px] rounded-full bg-white shadow-md"
+                  className="h-5 w-5 rounded-full bg-white shadow-md"
                   animate={{ x: sound.output_muted ? 20 : 0 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
@@ -62,7 +63,7 @@ const SoundPage = (): React.JSX.Element => {
 
           <SettingsGroup header="Input" accent="#bf5af2">
             <SettingsRow title="Microphone" description="Input volume level.">
-              <div className="flex items-center gap-3 w-[260px]">
+              <div className="flex items-center gap-3 w-65">
                 <SettingsSlider
                   value={sound.input_volume}
                   min={0}
@@ -76,12 +77,12 @@ const SoundPage = (): React.JSX.Element => {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={(): void => setInputMuted(!sound.input_muted)}
-                className={`h-[26px] w-[46px] shrink-0 rounded-full p-[3px] transition-colors duration-200 cursor-pointer ${
+                className={`h-6.5 w-11.5 shrink-0 rounded-full p-0.75 transition-colors duration-200 cursor-pointer ${
                   sound.input_muted ? "bg-danger" : "bg-surface-active"
                 }`}
               >
                 <motion.div
-                  className="h-[20px] w-[20px] rounded-full bg-white shadow-md"
+                  className="h-5 w-5 rounded-full bg-white shadow-md"
                   animate={{ x: sound.input_muted ? 20 : 0 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />

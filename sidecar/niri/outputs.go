@@ -9,18 +9,19 @@ import (
 
 // Output represents a display output from niri.
 type Output struct {
-	Name      string `json:"name"`
-	Enabled   bool   `json:"enabled"`
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	RefreshHz int    `json:"refresh_hz"`
-	Scale     int    `json:"scale"`
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Focused   bool   `json:"focused"`
+	Name      string  `json:"name"`
+	Enabled   bool    `json:"enabled"`
+	Width     int     `json:"width"`
+	Height    int     `json:"height"`
+	RefreshHz int     `json:"refresh_hz"`
+	Scale     float64 `json:"scale"`
+	X         int     `json:"x"`
+	Y         int     `json:"y"`
+	Focused   bool    `json:"focused"`
 }
 
 var modeRe = regexp.MustCompile(`(\d+)x(\d+)\s*@\s*([\d.]+)\s*Hz`)
+var sizeRe = regexp.MustCompile(`(\d+)x(\d+)`)
 var posRe = regexp.MustCompile(`(-?\d+),\s*(-?\d+)`)
 
 // ListOutputs queries niri for connected display outputs.
@@ -98,14 +99,18 @@ func parseOutputs(raw string) []Output {
 				current.RefreshHz = int(hz + 0.5)
 			}
 		case key == "Scale":
-			fmt.Sscanf(val, "%d", &current.Scale)
+			var s float64
+			if _, err := fmt.Sscanf(val, "%g", &s); err == nil {
+				current.Scale = s
+			}
 		case key == "Logical position":
 			if m := posRe.FindStringSubmatch(val); len(m) == 3 {
 				fmt.Sscanf(m[1], "%d", &current.X)
 				fmt.Sscanf(m[2], "%d", &current.Y)
 			}
 		case key == "Logical size":
-			if m := modeRe.FindStringSubmatch(val); len(m) >= 3 {
+			// Note: modeRe cannot match here — logical size lines have no "@ … Hz".
+			if m := sizeRe.FindStringSubmatch(val); len(m) == 3 {
 				fmt.Sscanf(m[1], "%d", &current.Width)
 				fmt.Sscanf(m[2], "%d", &current.Height)
 			}

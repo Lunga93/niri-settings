@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Monitor, RefreshCw } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
@@ -32,12 +32,12 @@ interface ToggleSwitchProps {
 const ToggleSwitch = ({ checked, onToggle }: ToggleSwitchProps): React.JSX.Element => (
   <button
     onClick={(): void => onToggle(!checked)}
-    className={`relative h-[26px] w-[46px] shrink-0 rounded-full p-[3px] transition-colors duration-200 cursor-pointer ${
+    className={`relative h-6.5 w-11.5 shrink-0 rounded-full p-0.75 transition-colors duration-200 cursor-pointer ${
       checked ? "bg-accent" : "bg-surface-active"
     }`}
   >
     <motion.div
-      className="h-[20px] w-[20px] rounded-full bg-white shadow-md"
+      className="h-5 w-5 rounded-full bg-white shadow-md"
       animate={{ x: checked ? 20 : 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
     />
@@ -51,7 +51,7 @@ interface MonitorVisualizationProps {
 const MonitorVisualization = ({ outputs }: MonitorVisualizationProps): React.JSX.Element => {
   if (outputs.length === 0) {
     return (
-      <div className="relative h-[200px] w-full rounded-xl bg-surface-active border border-border overflow-hidden flex items-center justify-center">
+      <div className="relative h-50 w-full rounded-xl bg-surface-active border border-border overflow-hidden flex items-center justify-center">
         <span className="text-[12px] text-text-muted">No outputs detected</span>
       </div>
     );
@@ -76,7 +76,7 @@ const MonitorVisualization = ({ outputs }: MonitorVisualizationProps): React.JSX
   const scaleF = Math.min((svgW - padding * 2) / totalW, (svgH - padding * 2) / totalH);
 
   return (
-    <div className="relative h-[220px] w-full rounded-xl bg-surface-active border border-border overflow-hidden">
+    <div className="relative h-55 w-full rounded-xl bg-surface-active border border-border overflow-hidden">
       <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-full">
         <rect
           x="0"
@@ -159,7 +159,7 @@ const DisplayPage = (): React.JSX.Element => {
   const refresh = useSetAtom(refreshDisplayOutputsAtom);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const scaleIndex = SCALE_KEYS.indexOf(display.scale);

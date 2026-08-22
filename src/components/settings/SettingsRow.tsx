@@ -1,3 +1,5 @@
+import React from "react";
+
 interface SettingsRowProps {
   readonly title: string;
   readonly description?: string;

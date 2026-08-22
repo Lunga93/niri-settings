@@ -84,14 +84,17 @@ func WriteKeybinding(oldKey, newKey, action string) error {
 
 	// Find and replace the key binding line
 	// Look for lines like:  Mod+T { spawn "alacritty"; }
+	// Matching ignores quotes so curated actions such as
+	// `set-column-width "-10%"` match the parsed form `set-column-width -10%`.
 	lines := strings.Split(content, "\n")
 	found := false
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
+		flat := strings.ReplaceAll(trimmed, `"`, "")
 
 		// Check if this line contains the action we want to rebind
-		if strings.Contains(trimmed, action) && strings.Contains(trimmed, "{") {
+		if strings.Contains(flat, action) && strings.Contains(flat, "{") {
 			// Replace the key part
 			idx := strings.Index(trimmed, "{")
 			if idx > 0 {

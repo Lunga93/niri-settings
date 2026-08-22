@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
+import React from "react";
 
 const NetworkPage = (): React.JSX.Element => (
   <div className="h-full overflow-y-auto scrollbar-thin">

@@ -228,6 +228,10 @@ func handleWriteNiriConfig(args map[string]interface{}) {
 	}
 
 	paths := config.Resolve()
+	if err := config.BackupConfig(paths.ConfigFile); err != nil {
+		// Non-fatal: the config may not exist yet on a fresh system.
+		fmt.Printf("Warning: failed to backup niri config: %v\n", err)
+	}
 	if err := config.WriteConfig(paths.ConfigFile, content); err != nil {
 		writeError(os.Stdout, "NIRI_CONFIG_WRITE_ERROR", fmt.Sprintf("Failed to write %s: %v", paths.ConfigFile, err), nil)
 		return
@@ -347,7 +351,10 @@ func handleOpenFile(args map[string]interface{}) {
 		return
 	}
 
-	editors := []string{"code", "nvim", "vim", "nano", "xdg-open"}
+	// Only launchers that can attach to the desktop environment work here:
+	// the sidecar has no controlling TTY, so terminal editors (nvim, vim,
+	// nano) would die immediately with stdin/stdout disconnected.
+	editors := []string{"code", "xdg-open"}
 	var lastErr error
 	for _, editor := range editors {
 		cmd := exec.Command(editor, path)

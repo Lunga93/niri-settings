@@ -38,9 +38,9 @@ cp src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu \
 > [!warning] Step ③ is required
 > `tauri.conf.json` currently has **no `bundle.externalBin`**, so step ① does **not** package the Go helper. Skipping ③ yields an app that launches but fails on every action ("Failed to spawn sidecar").
 
-## 2. Permanent fix — wire the sidecar into Tauri bundling (recommended)
+## 2. Sidecar bundling — wired via `externalBin` (configured 2026-08-22)
 
-Tauri supports external binaries natively, and the file produced in step ② already follows its `<name>-<target-triple>` naming convention. Add to `src-tauri/tauri.conf.json`:
+`tauri.conf.json` now contains:
 
 ```jsonc
 "bundle": {
@@ -50,10 +50,11 @@ Tauri supports external binaries natively, and the file produced in step ② alr
 }
 ```
 
-After this one-line change:
+The file produced in step ② follows Tauri's `<name>-<target-triple>` naming convention, so:
 
-- `npm run tauri dev` and `npm run tauri build` copy & strip-suffix the sidecar automatically — steps ②/③ of section 1 become unnecessary for bundling (you still rebuild the Go file after editing `sidecar/`).
+- `npm run tauri dev` and `npm run tauri build` copy & strip-suffix the sidecar automatically — step ③ of section 1 is no longer needed for bundling (you still rebuild the Go file after editing `sidecar/`, per step ②).
 - Installers (`.deb`, `.rpm`, AppImage — whatever your host tooling produces) include the sidecar.
+- `generate_context!` validates the binary exists at compile time: if cargo fails with a missing `binaries/niri-settings-sidecar-*`, run step ② first.
 
 ## 3. Artifacts produced by `tauri build`
 

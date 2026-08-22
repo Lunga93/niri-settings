@@ -12,6 +12,7 @@ import KeybindingsPage from "@/pages/KeybindingsPage";
 import NetworkPage from "@/pages/NetworkPage";
 import SoundPage from "@/pages/SoundPage";
 import SysInfoPage from "@/pages/SysInfoPage";
+import React from "react";
 
 const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   wallpaper: WallpaperPage,
@@ -44,7 +45,7 @@ const AppLayout = (): React.JSX.Element => {
       <TitleBar />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-[232px] shrink-0 bg-surface-sidebar border-r border-border">
+        <div className="w-58 shrink-0 bg-surface-sidebar border-r border-border">
           <Sidebar />
         </div>
 

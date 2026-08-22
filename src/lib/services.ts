@@ -30,8 +30,18 @@ export const readSettings = async (): Promise<SettingsData | null> => {
 /**
  * Writes the settings data to disk via the sidecar.
  * Auto-reloads quickshell after write.
+ * Writes are serialized: rapid slider ticks must not interleave
+ * and let an older snapshot overwrite a newer one.
  */
+let writeQueue: Promise<unknown> = Promise.resolve();
+
 export const writeSettings = async (data: SettingsData): Promise<boolean> => {
+  const job = writeQueue.then(() => doWriteSettings(data));
+  writeQueue = job.catch(() => undefined);
+  return job;
+};
+
+const doWriteSettings = async (data: SettingsData): Promise<boolean> => {
   sidecarLogger.info("Writing settings.json to disk");
   try {
     const content = JSON.stringify(data, null, 2);

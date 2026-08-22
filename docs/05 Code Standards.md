@@ -44,11 +44,25 @@ Conventions actually enforced or established in this codebase, with references. 
 
 ## Known gaps (fix-me list)
 
-- [ ] No README at repo root.
-- [x] ~~Repo has zero commits~~ initial commit made; `.gitignore` added (2026-08-22).
-- [ ] `bundle.externalBin` not configured ([[04 Building and Distribution]], §2).
-- [ ] `config.BackupConfig` exists in `sidecar/config/paths.go` but is never called before overwriting `config.kdl` — consider wiring it into `handleWriteNiriConfig`.
-- [ ] `handleOpenFile` tries editors sequentially with no timeout; a blocking `$EDITOR` could stall the response.
+Fixed 2026-08-22:
+- [x] Repo committed on `main`, `.gitignore` added.
+- [x] Root `README.md` written.
+- [x] `bundle.externalBin` configured in `tauri.conf.json` — the Go sidecar is bundled automatically (`go build ./sidecar` into `src-tauri/binaries/` still required after Go changes).
+- [x] `config.BackupConfig` now runs before every `config.kdl` overwrite (`handleWriteNiriConfig`).
+- [x] `handleOpenFile` no longer offers terminal editors — the sidecar has no controlling TTY so `nvim/vim/nano` would die instantly; only `code` / `xdg-open` are used.
+- [x] Fractional display scales parse correctly (`Output.Scale` is `float64`; was silently truncating `1.5` → `1`).
+- [x] Logical size parsing actually matches now (dedicated `sizeRe`; `modeRe` required an `@ … Hz` suffix that logical-size lines never have).
+- [x] Keybinding rebinding matches quote-stripped actions, so curated entries like `set-column-width "-10%"` find their line in the KDL.
+- [x] Sound settings now apply via `wpctl` (`triggerSideEffects("sound", …)`); previously they persisted but never touched the system.
+- [x] `writeSettings` calls are serialized — rapid slider ticks can no longer interleave and let a stale snapshot win.
+- [x] `custom_subreddits` declared in `WallpaperSettingsSchema` — found by smoke-testing the sidecar against live config: zod was silently stripping it, so the next save from the app would have deleted it (and any write would have dropped it) from disk.
+
+Accepted limitations (documented, not bugs):
+- `security.csp` is `null` in `tauri.conf.json`; fine for a local tool, revisit if it ever loads remote content.
+- No timeout wraps the sidecar process; a wedged handler stalls that invoke (handlers are all quick file/CLI ops today).
+- Settings persist twice (localStorage via `atomWithStorage` + disk JSON); disk wins at startup via `loadSettingsAtom`.
+- niri output/keybinding parsing is text/regex based against `niri msg` formats — it will need updating if niri changes its output shape.
+- zod strips unknown keys inside known sections on parse; any new field your shell scripts write into `settings.json` must be added to `src/lib/schemas.ts` or it will vanish on the next save from this app.
 
 ## Code reference index
 

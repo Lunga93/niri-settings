@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
 import { iconsAtom, setIconThemeAtom, setCursorThemeAtom, setCursorSizeAtom } from "@/lib/atoms";
+import React from "react";
 
 const ICON_THEMES = ["Papirus", "Tela", "Colloid", "Papirus-Dark", "WhiteSur"] as const;
 const CURSOR_THEMES = ["Capitaine", "Breeze", "Adwaita", "Numix", "WhiteSur"] as const;

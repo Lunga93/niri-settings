@@ -8,6 +8,7 @@ import {
   setWallpaperMoodAtom,
   toggleWallpaperSourceAtom,
 } from "@/lib/atoms";
+import React from "react";
 
 const MOODS = ["Sunset", "Ocean", "Forest", "Space", "Minimal"] as const;
 

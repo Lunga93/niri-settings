@@ -8,6 +8,7 @@ import {
   setAccentColorAtom,
   setAccentModeAtom,
 } from "@/lib/atoms";
+import React from "react";
 
 const ACCENT_COLORS = [
   "#0a84ff",

@@ -40,28 +40,29 @@ export const invokeSidecar = async <T>(
 ): Promise<T> => {
   sidecarLogger.debug(`invokeSidecar: ${command}`, args);
 
+  let raw: unknown;
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    const raw: unknown = await invoke("sidecar_command", {
+    raw = await invoke("sidecar_command", {
       command,
       args: args ?? {},
     });
-
-    const result = schema.safeParse(raw);
-    if (!result.success) {
-      sidecarLogger.error(`Schema validation failed for ${command}`, result);
-      throw {
-        code: "SCHEMA_VALIDATION_ERROR",
-        message: `Invalid response from sidecar command "${command}"`,
-        details: raw,
-      } satisfies AppError;
-    }
-    return result.data;
   } catch (err) {
     const appErr = normalizeError(err);
     sidecarLogger.error(`Sidecar command "${command}" failed`, appErr);
     throw appErr;
   }
+
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    sidecarLogger.error(`Schema validation failed for ${command}`, result);
+    throw {
+      code: "SCHEMA_VALIDATION_ERROR",
+      message: `Invalid response from sidecar command "${command}"`,
+      details: raw,
+    } satisfies AppError;
+  }
+  return result.data;
 };
 
 /**

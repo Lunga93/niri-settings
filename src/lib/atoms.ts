@@ -209,38 +209,34 @@ export const setCursorSizeAtom = atom(null, (get, set, size: number) => {
 
 export const setOutputVolumeAtom = atom(null, (get, set, vol: number) => {
   const prev = get(settingsAtom);
-  set(settingsAtom, {
-    ...prev,
-    sound: { ...prev.sound, output_volume: vol },
-  });
-  writeSettings(get(settingsAtom)).catch(() => undefined);
+  const next = { ...prev, sound: { ...prev.sound, output_volume: vol } };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  triggerSideEffects("sound", next);
 });
 
 export const setOutputMutedAtom = atom(null, (get, set, muted: boolean) => {
   const prev = get(settingsAtom);
-  set(settingsAtom, {
-    ...prev,
-    sound: { ...prev.sound, output_muted: muted },
-  });
-  writeSettings(get(settingsAtom)).catch(() => undefined);
+  const next = { ...prev, sound: { ...prev.sound, output_muted: muted } };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  triggerSideEffects("sound", next);
 });
 
 export const setInputVolumeAtom = atom(null, (get, set, vol: number) => {
   const prev = get(settingsAtom);
-  set(settingsAtom, {
-    ...prev,
-    sound: { ...prev.sound, input_volume: vol },
-  });
-  writeSettings(get(settingsAtom)).catch(() => undefined);
+  const next = { ...prev, sound: { ...prev.sound, input_volume: vol } };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  triggerSideEffects("sound", next);
 });
 
 export const setInputMutedAtom = atom(null, (get, set, muted: boolean) => {
   const prev = get(settingsAtom);
-  set(settingsAtom, {
-    ...prev,
-    sound: { ...prev.sound, input_muted: muted },
-  });
-  writeSettings(get(settingsAtom)).catch(() => undefined);
+  const next = { ...prev, sound: { ...prev.sound, input_muted: muted } };
+  set(settingsAtom, next);
+  writeSettings(next).catch(() => undefined);
+  triggerSideEffects("sound", next);
 });
 
 // ── Wallpaper-specific write atoms ──
@@ -300,6 +296,15 @@ const triggerSideEffects = (section: keyof SettingsData, data: SettingsData): vo
       execScript(
         `sleep 0.5 && ~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`,
       ).catch(() => undefined);
+      break;
+    case "sound":
+      // Apply via WirePlumber; silently ignored when wpctl is unavailable.
+      void execScript(
+        `wpctl set-volume @DEFAULT_AUDIO_SINK@ ${data.sound.output_volume}% && wpctl set-mute @DEFAULT_AUDIO_SINK@ ${data.sound.output_muted ? "1" : "0"}`,
+      );
+      void execScript(
+        `wpctl set-volume @DEFAULT_AUDIO_SOURCE@ ${data.sound.input_volume}% && wpctl set-mute @DEFAULT_AUDIO_SOURCE@ ${data.sound.input_muted ? "1" : "0"}`,
+      );
       break;
     default:
       break;

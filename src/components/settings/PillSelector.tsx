@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import React from "react";
 
 interface PillSelectorProps {
   readonly options: readonly string[];

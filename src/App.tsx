@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { loadSettingsAtom } from "@/lib/atoms";
@@ -7,7 +7,7 @@ import { loadSettingsAtom } from "@/lib/atoms";
 const SettingsLoader = (): React.JSX.Element => {
   const load = useSetAtom(loadSettingsAtom);
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
   return <AppLayout />;
 };

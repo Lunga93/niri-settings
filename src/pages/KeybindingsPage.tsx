@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, RotateCcw, FileText } from "lucide-react";
@@ -155,7 +155,7 @@ const CaptureDialog = ({
       >
         <h3 className="text-[15px] font-semibold text-text-header mb-4">Press a key combination</h3>
 
-        <div className="flex h-[48px] items-center justify-center rounded-xl border border-border bg-surface-active mb-4">
+        <div className="flex h-12 items-center justify-center rounded-xl border border-border bg-surface-active mb-4">
           <AnimatePresence mode="wait">
             <motion.span
               key={captured ?? "waiting"}
@@ -189,7 +189,7 @@ const CaptureDialog = ({
               if (captured) onAccept(captured);
             }}
             disabled={captured === null}
-            className="flex-1 rounded-lg bg-accent py-2 text-[12px] font-medium text-white hover:brightness-110 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 rounded-lg bg-accent py-2 text-[12px] font-medium text-white hover:brightness-110 transition-all cursor-pointer disabled:opacity-40"
           >
             Confirm
           </button>
