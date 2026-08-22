@@ -74,8 +74,7 @@ The UI itself launches fine outside a niri session — pages degrade individuall
 
 ## 5. Repo hygiene notes
 
-- The git repo currently has **no commits** — make the first commit before doing risky work.
-- There is **no root `.gitignore`** yet; `node_modules/`, `dist/`, `coverage/`, `src-tauri/target/` should be ignored before committing.
+- Git tracking set up 2026-08-22: initial commit on `main`, `.gitignore` in place (ignores `node_modules/`, `dist/`, `coverage/`, `src-tauri/target/`, sidecar build output, Obsidian workspace state).
 - No README exists at repo root — [[00 Home]] of this vault is the stand-in until one is written.
 
 Next: [[04 Building and Distribution]]

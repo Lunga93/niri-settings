@@ -44,9 +44,8 @@ Conventions actually enforced or established in this codebase, with references. 
 
 ## Known gaps (fix-me list)
 
-- [ ] Repo has zero commits; create initial commit.
-- [ ] No root `.gitignore`: add at least `node_modules/`, `dist/`, `coverage/`, `src-tauri/target/`.
 - [ ] No README at repo root.
+- [x] ~~Repo has zero commits~~ initial commit made; `.gitignore` added (2026-08-22).
 - [ ] `bundle.externalBin` not configured ([[04 Building and Distribution]], §2).
 - [ ] `config.BackupConfig` exists in `sidecar/config/paths.go` but is never called before overwriting `config.kdl` — consider wiring it into `handleWriteNiriConfig`.
 - [ ] `handleOpenFile` tries editors sequentially with no timeout; a blocking `$EDITOR` could stall the response.
