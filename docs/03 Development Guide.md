@@ -27,8 +27,10 @@ cd ~/src/niri-settings
 # ① frontend deps
 npm install
 
-# ② build the Go sidecar INTO the location the Rust core looks at
-go build -o src-tauri/target/debug/niri-settings-sidecar ./sidecar
+# ② build the Go sidecar into the externalBin location.
+# The Tauri CLI copies this file over target/debug/ on EVERY launch,
+# so building straight into target/debug/ is silently undone.
+go build -o src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu ./sidecar
 
 # ③ launch
 npm run tauri dev

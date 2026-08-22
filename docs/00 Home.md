@@ -7,7 +7,7 @@ tags: [moc, index]
 A cross-platform-styled desktop settings application for the [niri](https://github.com/YaLTeR/niri) Wayland compositor and its quickshell desktop shell. Built with **Tauri v2**: React UI, thin Rust core, and a Go sidecar that does the actual system work.
 
 > [!note] Repo state (Aug 2026)
-> The repo has **no commits yet**, no README, and no `.gitignore`. See [[05 Code Standards]] for hygiene TODOs.
+> Active development. Current backlog and known issues live in [[07 Roadmap]] — check there before fixing anything.
 
 ## Reading order
 
@@ -19,13 +19,15 @@ A cross-platform-styled desktop settings application for the [niri](https://gith
 | 4 | [[04 Building and Distribution]] | Producing a working executable / installers |
 | 5 | [[05 Code Standards]] | Conventions, testing gates, code reference index |
 | 6 | [[06 Design Brief]] | Requirements for designers — capabilities, constraints, deliverables |
+| 7 | [[07 Roadmap]] | Prioritized backlog: P0 fixes → P4 design overhaul, with verification gates |
+| 8 | [[08 Changelog]] | Dated record of fixes: symptom → root cause → fix → verification |
 
 ## TL;DR
 
 ```sh
 # one-time setup
 npm install
-go build -o src-tauri/target/debug/niri-settings-sidecar ./sidecar
+go build -o src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu ./sidecar
 
 # every dev session
 npm run tauri dev        # vite :1420 + rust build + app window
@@ -38,4 +40,4 @@ npm run tauri build      # -> src-tauri/target/release/niri-settings
 ```
 
 > [!warning] Read this before running anything
-> The app spawns a **Go helper binary** sitting *next to the executable*. If it is missing, every page errors with "Failed to spawn sidecar". The one-time `go build …` line above prevents this. Full explanation in [[03 Development Guide]].
+> The app spawns a **Go helper binary** sitting *next to the executable*. If it is missing, every page errors with "Failed to spawn sidecar". Build it to `src-tauri/binaries/niri-settings-sidecar-<target-triple>` — the Tauri CLI copies that file over `target/debug/` on **every** launch, so building straight into `target/debug/` gets silently reverted. Full explanation in [[03 Development Guide]].
