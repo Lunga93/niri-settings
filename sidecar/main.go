@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -58,6 +59,7 @@ func writeResponse(w io.Writer, data interface{}) {
 }
 
 func writeError(w io.Writer, code string, message string, details interface{}) {
+	log.Printf("[sidecar:go] ERROR [%s] %s (details: %v)\n", code, message, details)
 	json.NewEncoder(w).Encode(Response{
 		OK: false,
 		Error: &AppError{
@@ -89,6 +91,8 @@ func main() {
 		writeError(os.Stdout, "PARSE_ERROR", "Invalid JSON request", nil)
 		os.Exit(1)
 	}
+
+	log.Printf("[sidecar:go] Received command: %s (args count: %d)\n", req.Command, len(req.Args))
 
 	switch req.Command {
 	case "list_outputs":
@@ -125,6 +129,12 @@ func main() {
 		handleOpenFile(req.Args)
 	case "get_wallpaper_info":
 		handleGetWallpaperInfo()
+	case "list_wallpapers":
+		handleListWallpapers()
+	case "ensure_wallpaper_thumbs":
+		handleEnsureWallpaperThumbs()
+	case "set_wallpaper":
+		handleSetWallpaper(req.Args)
 	case "get_theme_colors":
 		handleGetThemeColors()
 	case "get_audio_devices":
@@ -405,6 +415,16 @@ func handleOpenFile(args map[string]interface{}) {
 	writeError(os.Stdout, "NO_EDITOR", fmt.Sprintf("Failed to open %s: %v", resolvedPath, lastErr), nil)
 }
 
+type WallpaperItem struct {
+	Path      string   `json:"path"`
+	Filename  string   `json:"filename"`
+	Name      string   `json:"name"`
+	Moods     []string `json:"moods"`
+	FileSize  int64    `json:"file_size"`
+	MTime     float64  `json:"mtime"`
+	Thumbnail string   `json:"thumbnail"`
+}
+
 type WallpaperMoodStats struct {
 	LAvg float64 `json:"L_avg"`
 	CAvg float64 `json:"C_avg"`
@@ -420,6 +440,105 @@ type WallpaperTagEntry struct {
 type WallpaperMoodsCacheFile struct {
 	Version int                          `json:"version"`
 	Tags    map[string]WallpaperTagEntry `json:"tags"`
+}
+
+func getWallpaperData(home string) ([]WallpaperItem, map[string]int, map[string][]string, int) {
+	moodCounts := map[string]int{
+		"dark":  0,
+		"light": 0,
+		"warm":  0,
+		"cool":  0,
+		"sky":   0,
+		"earth": 0,
+	}
+	wallpapersByMood := map[string][]string{
+		"dark":  {},
+		"light": {},
+		"warm":  {},
+		"cool":  {},
+		"sky":   {},
+		"earth": {},
+	}
+	wallpapersMap := make(map[string]WallpaperItem)
+
+	cachePath := filepath.Join(home, ".cache", "dotfiles", "wallpaper-moods.json")
+	if cacheData, err := os.ReadFile(cachePath); err == nil {
+		var cache WallpaperMoodsCacheFile
+		if err := json.Unmarshal(cacheData, &cache); err == nil {
+			for path, entry := range cache.Tags {
+				resolvedPath := expandPath(path)
+				var moods []string
+				for _, m := range entry.Moods {
+					mLower := strings.ToLower(m)
+					moods = append(moods, mLower)
+					if _, ok := moodCounts[mLower]; ok {
+						moodCounts[mLower]++
+						wallpapersByMood[mLower] = append(wallpapersByMood[mLower], resolvedPath)
+					}
+				}
+				if moods == nil {
+					moods = []string{}
+				}
+				filename := filepath.Base(resolvedPath)
+				ext := filepath.Ext(filename)
+				name := strings.TrimSuffix(filename, ext)
+				var fileSize int64
+				if fi, err := os.Stat(resolvedPath); err == nil {
+					fileSize = fi.Size()
+				}
+				wallpapersMap[resolvedPath] = WallpaperItem{
+					Path:      resolvedPath,
+					Filename:  filename,
+					Name:      name,
+					Moods:     moods,
+					FileSize:  fileSize,
+					MTime:     entry.MTime,
+					Thumbnail: thumbnailPathFor(home, resolvedPath),
+				}
+			}
+		}
+	}
+
+	wallpapersDir := filepath.Join(home, "Pictures", "wallpapers")
+	if entries, err := os.ReadDir(wallpapersDir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
+			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
+				fullPath := filepath.Join(wallpapersDir, entry.Name())
+				if _, exists := wallpapersMap[fullPath]; !exists {
+					var fileSize int64
+					var mtime float64
+					if fi, err := entry.Info(); err == nil {
+						fileSize = fi.Size()
+						mtime = float64(fi.ModTime().Unix())
+					}
+					wallpapersMap[fullPath] = WallpaperItem{
+						Path:      fullPath,
+						Filename:  entry.Name(),
+						Name:      strings.TrimSuffix(entry.Name(), ext),
+						Moods:     []string{},
+						FileSize:  fileSize,
+						MTime:     mtime,
+						Thumbnail: thumbnailPathFor(home, fullPath),
+					}
+				}
+			}
+		}
+	}
+
+	wallpapers := make([]WallpaperItem, 0, len(wallpapersMap))
+	for _, item := range wallpapersMap {
+		wallpapers = append(wallpapers, item)
+	}
+
+	sort.Slice(wallpapers, func(i, j int) bool {
+		return strings.ToLower(wallpapers[i].Filename) < strings.ToLower(wallpapers[j].Filename)
+	})
+
+	return wallpapers, moodCounts, wallpapersByMood, len(wallpapers)
 }
 
 func handleGetWallpaperInfo() {
@@ -440,54 +559,11 @@ func handleGetWallpaperInfo() {
 			currentPath = fallback
 		}
 	}
-
-	var imageBase64 string
 	if currentPath != "" {
-		resolvedImgPath := expandPath(currentPath)
-		if imgData, err := os.ReadFile(resolvedImgPath); err == nil && len(imgData) > 0 {
-			ext := strings.ToLower(filepath.Ext(resolvedImgPath))
-			mime := "image/jpeg"
-			if ext == ".png" {
-				mime = "image/png"
-			} else if ext == ".webp" {
-				mime = "image/webp"
-			}
-			imageBase64 = fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(imgData))
-		}
+		currentPath = expandPath(currentPath)
 	}
 
-	moodCounts := map[string]int{
-		"dark":  0,
-		"light": 0,
-		"warm":  0,
-		"cool":  0,
-		"sky":   0,
-		"earth": 0,
-	}
-	wallpapersByMood := map[string][]string{
-		"dark":  {},
-		"light": {},
-		"warm":  {},
-		"cool":  {},
-		"sky":   {},
-		"earth": {},
-	}
-	totalScanned := 0
-
-	cachePath := filepath.Join(home, ".cache", "dotfiles", "wallpaper-moods.json")
-	if cacheData, err := os.ReadFile(cachePath); err == nil {
-		var cache WallpaperMoodsCacheFile
-		if err := json.Unmarshal(cacheData, &cache); err == nil {
-			totalScanned = len(cache.Tags)
-			for path, entry := range cache.Tags {
-				for _, m := range entry.Moods {
-					mLower := strings.ToLower(m)
-					moodCounts[mLower]++
-					wallpapersByMood[mLower] = append(wallpapersByMood[mLower], path)
-				}
-			}
-		}
-	}
+	wallpapers, moodCounts, wallpapersByMood, totalScanned := getWallpaperData(home)
 
 	skipToday := false
 	skipFile := filepath.Join(home, ".local", "share", "dotfiles", "skip_today")
@@ -500,11 +576,52 @@ func handleGetWallpaperInfo() {
 
 	writeResponse(os.Stdout, map[string]interface{}{
 		"current_wallpaper":  currentPath,
-		"image_base64":       imageBase64,
 		"total_scanned":      totalScanned,
 		"mood_counts":        moodCounts,
 		"wallpapers_by_mood": wallpapersByMood,
+		"wallpapers":         wallpapers,
 		"skip_today":         skipToday,
+	})
+}
+
+func handleListWallpapers() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		writeError(os.Stdout, "USER_DIR_ERROR", "Could not get user home directory", nil)
+		return
+	}
+	wallpapers, _, _, total := getWallpaperData(home)
+	writeResponse(os.Stdout, map[string]interface{}{
+		"wallpapers": wallpapers,
+		"total":      total,
+	})
+}
+
+func handleSetWallpaper(args map[string]interface{}) {
+	path, ok := getStringArg(args, "path")
+	if !ok || strings.TrimSpace(path) == "" {
+		writeError(os.Stdout, "INVALID_ARGS", "Missing or empty 'path' argument", nil)
+		return
+	}
+	resolvedPath := expandPath(strings.TrimSpace(path))
+	if _, err := os.Stat(resolvedPath); err != nil {
+		writeError(os.Stdout, "FILE_NOT_FOUND", fmt.Sprintf("Wallpaper file not found: %s", resolvedPath), nil)
+		return
+	}
+
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		currentFile := filepath.Join(home, ".config", "current_wallpaper")
+		_ = os.WriteFile(currentFile, []byte(resolvedPath), 0644)
+	}
+
+	if err := system.SetWallpaper(resolvedPath); err != nil {
+		writeError(os.Stdout, "SET_WALLPAPER_FAILED", fmt.Sprintf("Failed to set wallpaper: %v", err), nil)
+		return
+	}
+	writeResponse(os.Stdout, map[string]string{
+		"status": "ok",
+		"path":   resolvedPath,
 	})
 }
 

@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createStore } from "jotai";
 import {
   settingsAtom,
-  wallpaperAtom,
   appearanceAtom,
   displayAtom,
   iconsAtom,
@@ -16,15 +15,46 @@ import {
   setOutputVolumeAtom,
   setOutputMutedAtom,
   setInputMutedAtom,
-  setWallpaperFrequencyAtom,
-  setWallpaperMoodAtom,
-  toggleWallpaperSourceAtom,
 } from "./atoms";
 
 vi.mock("./services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
   readSettings: vi.fn().mockResolvedValue(null),
   setGSetting: vi.fn().mockResolvedValue(true),
+  getWallpaperInfo: vi.fn().mockResolvedValue({
+    current_wallpaper: "/home/user/Pictures/wallpapers/forest.jpg",
+    total_scanned: 10,
+    mood_counts: { dark: 5, light: 5, warm: 0, cool: 0, sky: 0, earth: 0 },
+    wallpapers_by_mood: {
+      dark: ["/home/user/Pictures/wallpapers/dark1.jpg"],
+      light: ["/home/user/Pictures/wallpapers/light1.jpg"],
+      warm: [],
+      cool: [],
+      sky: [],
+      earth: [],
+    },
+    wallpapers: [
+      {
+        path: "/home/user/Pictures/wallpapers/dark1.jpg",
+        filename: "dark1.jpg",
+        name: "dark1",
+        moods: ["dark"],
+        file_size: 1000,
+        mtime: 12345,
+      },
+      {
+        path: "/home/user/Pictures/wallpapers/light1.jpg",
+        filename: "light1.jpg",
+        name: "light1",
+        moods: ["light"],
+        file_size: 2000,
+        mtime: 12346,
+      },
+    ],
+    skip_today: false,
+  }),
+  setWallpaper: vi.fn().mockResolvedValue(true),
+  getThemeColors: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("./sidecar", () => ({
@@ -45,12 +75,6 @@ describe("settingsAtom", () => {
     expect(data.display.scale).toBe("1.0");
     expect(data.icons.icon_theme).toBe("Papirus");
     expect(data.sound.output_volume).toBe(100);
-  });
-
-  it("derived wallpaperAtom reads wallpaper section", () => {
-    const wallpaper = store.get(wallpaperAtom);
-    expect(wallpaper.frequency).toBe("daily");
-    expect(wallpaper.selected_mood).toBeNull();
   });
 
   it("derived appearanceAtom reads appearance section", () => {
@@ -194,46 +218,5 @@ describe("sound write atoms", () => {
   it("setInputMutedAtom updates input muted state", () => {
     store.set(setInputMutedAtom, true);
     expect(store.get(soundAtom).input_muted).toBe(true);
-  });
-});
-
-describe("wallpaper write atoms", () => {
-  let store: ReturnType<typeof createStore>;
-
-  beforeEach(() => {
-    store = createStore();
-  });
-
-  it("setWallpaperFrequencyAtom updates frequency", () => {
-    store.set(setWallpaperFrequencyAtom, "hourly");
-    expect(store.get(wallpaperAtom).frequency).toBe("hourly");
-  });
-
-  it("setWallpaperMoodAtom updates selected_mood", () => {
-    store.set(setWallpaperMoodAtom, "ocean");
-    expect(store.get(wallpaperAtom).selected_mood).toBe("ocean");
-  });
-
-  it("setWallpaperMoodAtom can set null", () => {
-    store.set(setWallpaperMoodAtom, "sunset");
-    store.set(setWallpaperMoodAtom, null);
-    expect(store.get(wallpaperAtom).selected_mood).toBeNull();
-  });
-
-  it("toggleWallpaperSourceAtom toggles a source on", () => {
-    // Start with defaults — local is true
-    store.set(toggleWallpaperSourceAtom, "local");
-    expect(store.get(wallpaperAtom).sources_enabled.local).toBe(false);
-  });
-
-  it("toggleWallpaperSourceAtom toggles a source off and on", () => {
-    store.set(toggleWallpaperSourceAtom, "local"); // true → false
-    store.set(toggleWallpaperSourceAtom, "local"); // false → true
-    expect(store.get(wallpaperAtom).sources_enabled.local).toBe(true);
-  });
-
-  it("toggleWallpaperSourceAtom creates new source if not in defaults", () => {
-    store.set(toggleWallpaperSourceAtom, "reddit");
-    expect(store.get(wallpaperAtom).sources_enabled.reddit).toBe(true);
   });
 });

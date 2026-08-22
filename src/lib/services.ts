@@ -1,16 +1,27 @@
+import { z } from "zod";
 import { invokeRaw } from "./sidecar";
 import {
   SettingsDataSchema,
-  WallpaperInfoSchema,
   PywalThemeSchema,
   AudioInfoSchema,
   type SettingsData,
-  type WallpaperInfo,
   type PywalTheme,
   type AudioInfo,
   type DisplayLayoutConfig,
 } from "./schemas";
+import {
+  WallpaperInfoSchema,
+  WallpaperListSchema,
+  WallpaperThumbsResultSchema,
+  type WallpaperInfo,
+  type WallpaperItem,
+} from "./schemas/wallpaper";
 import { sidecarLogger } from "./logger";
+
+const SetWallpaperResultSchema = z.object({
+  status: z.string(),
+  path: z.string().optional(),
+});
 
 /**
  * Reads the settings.json file from disk via the sidecar.
@@ -260,13 +271,80 @@ export const getWallpaperInfo = async (): Promise<WallpaperInfo | null> => {
     const raw = await invokeRaw("get_wallpaper_info");
     const result = WallpaperInfoSchema.safeParse(raw);
     if (result.success) {
+      sidecarLogger.info(
+        `Successfully retrieved wallpaper info: ${result.data.total_scanned} scanned, ${result.data.wallpapers?.length ?? 0} items in catalog`,
+      );
       return result.data;
     }
-    sidecarLogger.warn("get_wallpaper_info returned unexpected shape", raw);
+    sidecarLogger.error("get_wallpaper_info returned unexpected shape (schema validation failed)", {
+      issues: result.error.format(),
+    });
     return null;
   } catch (err) {
-    sidecarLogger.error("Failed to get wallpaper info", err);
+    sidecarLogger.error("Failed to get wallpaper info from sidecar", err);
     return null;
+  }
+};
+
+/**
+ * Retrieves the list of indexed wallpapers from the sidecar.
+ */
+export const listWallpapers = async (): Promise<WallpaperItem[]> => {
+  sidecarLogger.info("Listing wallpapers from sidecar");
+  try {
+    const raw = await invokeRaw("list_wallpapers");
+    const result = WallpaperListSchema.safeParse(raw);
+    if (result.success) {
+      return result.data.wallpapers;
+    }
+    sidecarLogger.error("list_wallpapers returned unexpected shape (schema validation failed)", {
+      issues: result.error.format(),
+    });
+    return [];
+  } catch (err) {
+    sidecarLogger.error("Failed to list wallpapers", err);
+    return [];
+  }
+};
+
+/**
+ * Generates missing/stale thumbnails for the wallpaper catalog via sidecar.
+ */
+export const ensureWallpaperThumbs = async (): Promise<boolean> => {
+  try {
+    const raw = await invokeRaw("ensure_wallpaper_thumbs");
+    const result = WallpaperThumbsResultSchema.safeParse(raw);
+    if (result.success) {
+      sidecarLogger.info(
+        `Wallpaper thumbnails ensured: ${result.data.generated} generated of ${result.data.total}`,
+      );
+      return true;
+    }
+    sidecarLogger.warn("ensure_wallpaper_thumbs returned unexpected shape", {
+      issues: result.error.format(),
+    });
+    return false;
+  } catch (err) {
+    sidecarLogger.error("Failed to ensure wallpaper thumbnails", err);
+    return false;
+  }
+};
+
+/**
+ * Sets the desktop wallpaper via sidecar.
+ */
+export const setWallpaper = async (wallpaperPath: string): Promise<boolean> => {
+  sidecarLogger.info(`Setting wallpaper to: ${wallpaperPath}`);
+  try {
+    const raw = await invokeRaw("set_wallpaper", { path: wallpaperPath });
+    const result = SetWallpaperResultSchema.safeParse(raw);
+    if (result.success && result.data.status === "ok") {
+      return true;
+    }
+    return result.success;
+  } catch (err) {
+    sidecarLogger.error(`Failed to set wallpaper to ${wallpaperPath}`, err);
+    return false;
   }
 };
 

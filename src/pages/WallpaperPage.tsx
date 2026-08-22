@@ -1,18 +1,38 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useAtom, useSetAtom } from "jotai";
-import { motion } from "framer-motion";
-import { Folder, Globe, RefreshCw, MoreHorizontal, Layers, Compass } from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Folder,
+  Globe,
+  RefreshCw,
+  MoreHorizontal,
+  Layers,
+  Compass,
+  Check,
+  Image as ImageIcon,
+  AlertCircle,
+  X,
+} from "lucide-react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import ToggleSwitch from "@/components/settings/ToggleSwitch";
+import Dropdown, { type DropdownOption } from "@/components/settings/Dropdown";
 import {
   wallpaperAtom,
   wallpaperInfoAtom,
   wallpaperInfoLoadingAtom,
+  wallpaperInfoErrorAtom,
   refreshWallpaperInfoAtom,
   setWallpaperFrequencyAtom,
   setWallpaperSkipTodayAtom,
   setWallpaperMoodAtom,
   toggleWallpaperSourceAtom,
-} from "@/lib/atoms";
+  filteredWallpapersAtom,
+  wallpaperApplyingAtom,
+  wallpaperApplyErrorAtom,
+  applyWallpaperAtom,
+  wallpaperThumbsVersionAtom,
+} from "@/lib/wallpaperAtoms";
+import type { WallpaperItem } from "@/lib/schemas/wallpaper";
 import { execScript } from "@/lib/sidecar";
 import { logger } from "@/lib/logger";
 
@@ -85,18 +105,204 @@ const SOURCES: readonly SourceItem[] = [
   { key: "picsum", title: "Picsum" },
 ];
 
+const FREQUENCY_OPTIONS: readonly DropdownOption[] = [
+  { value: "daily", label: "Daily", description: "Fetch every 24 hours" },
+  { value: "hourly", label: "Hourly", description: "Fetch every 60 minutes" },
+  { value: "startup", label: "On startup", description: "Fetch when logging in" },
+  { value: "never", label: "Never", description: "Manual fetching only" },
+];
+
+const resolveWallpaperUrl = (filePath: string): string => {
+  if (!filePath) return "";
+  if (
+    filePath.startsWith("data:") ||
+    filePath.startsWith("http://") ||
+    filePath.startsWith("https://") ||
+    filePath.startsWith("asset://")
+  ) {
+    return filePath;
+  }
+  try {
+    return convertFileSrc(filePath);
+  } catch {
+    return filePath;
+  }
+};
+
+const MOOD_TAG_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  dark: { bg: "bg-[#25201b]/90", text: "text-white/90", dot: "bg-[#5c5044]" },
+  light: { bg: "bg-[#524b42]/90", text: "text-white/90", dot: "bg-[#8a8073]" },
+  warm: { bg: "bg-[#5e3820]/90", text: "text-white/90", dot: "bg-[#e57b54]" },
+  cool: { bg: "bg-[#203657]/90", text: "text-white/90", dot: "bg-[#4f80c2]" },
+  sky: { bg: "bg-[#214859]/90", text: "text-white/90", dot: "bg-[#58a7cc]" },
+  earth: { bg: "bg-[#453424]/90", text: "text-white/90", dot: "bg-[#a9835a]" },
+};
+
+interface WallpaperCardProps {
+  readonly item: WallpaperItem;
+  readonly isActive: boolean;
+  readonly isApplying: boolean;
+  readonly thumbVersion: number;
+  readonly onSelect: (item: WallpaperItem) => void;
+}
+
+const GRID_INITIAL_COUNT = 24;
+const GRID_CHUNK = 24;
+
+const WallpaperCard: React.FC<WallpaperCardProps> = ({
+  item,
+  isActive,
+  isApplying,
+  thumbVersion,
+  onSelect,
+}) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const imageUrl = resolveWallpaperUrl(item.thumbnail);
+
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [imageUrl, thumbVersion]);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      whileHover={{ y: -3 }}
+      onClick={(): void => onSelect(item)}
+      className={`
+        group relative flex flex-col rounded-2xl border overflow-hidden bg-surface-elevated cursor-pointer transition-all duration-200 select-none
+        ${
+          isActive
+            ? "ring-2 ring-accent border-accent shadow-lg shadow-accent/15"
+            : "border-border hover:border-white/25 hover:shadow-md"
+        }
+      `}
+    >
+      {/* Thumbnail Container */}
+      <div className="relative aspect-16/10 w-full overflow-hidden bg-surface-active flex items-center justify-center">
+        {/* Skeleton while image is loading */}
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-0 bg-surface-active animate-pulse flex items-center justify-center">
+            <ImageIcon size={22} className="text-text-muted opacity-40 animate-pulse" />
+          </div>
+        )}
+
+        {/* Thumbnail Image */}
+        {!imageError && imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={item.name || item.filename}
+            loading="lazy"
+            decoding="async"
+            onLoad={(): void => setImageLoaded(true)}
+            onError={(): void => setImageError(true)}
+            className={`
+              h-full w-full object-cover transition-all duration-300 group-hover:scale-105
+              ${imageLoaded ? "opacity-100" : "opacity-0"}
+            `}
+          />
+        ) : (
+          <ImageIcon size={24} className="text-text-muted opacity-40" />
+        )}
+
+        {/* Active Badge (Top Left) */}
+        {isActive && (
+          <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-white shadow-md backdrop-blur-md">
+            <Check size={11} strokeWidth={3} />
+            <span>Active</span>
+          </div>
+        )}
+
+        {/* Applying Overlay */}
+        {isApplying && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/70 backdrop-blur-xs">
+            <RefreshCw size={20} className="animate-spin text-white" />
+            <span className="text-[11px] font-semibold text-white tracking-wide">Applying...</span>
+          </div>
+        )}
+
+        {/* Hover action overlay indicator (when not active and not applying) */}
+        {!isActive && !isApplying && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="rounded-xl bg-surface-window/90 border border-white/20 px-2.5 py-1 text-[11px] font-semibold text-white shadow backdrop-blur-md transform translate-y-1 group-hover:translate-y-0 transition-transform">
+              Set wallpaper
+            </span>
+          </div>
+        )}
+
+        {/* Mood Tags (Top Right) */}
+        {item.moods && item.moods.length > 0 && !isApplying && (
+          <div className="absolute top-2.5 right-2.5 z-10 flex flex-wrap gap-1 justify-end max-w-[70%]">
+            {item.moods.slice(0, 2).map((m) => {
+              const moodKey = m.toLowerCase();
+              const style = MOOD_TAG_STYLES[moodKey] ?? {
+                bg: "bg-black/60",
+                text: "text-white/90",
+                dot: "bg-white/60",
+              };
+              return (
+                <span
+                  key={m}
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider backdrop-blur-md ${style.bg} ${style.text}`}
+                >
+                  <span className={`h-1 w-1 rounded-full ${style.dot}`} />
+                  {m}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 const WallpaperPage = (): React.JSX.Element => {
   const [wallpaper] = useAtom(wallpaperAtom);
   const [info] = useAtom(wallpaperInfoAtom);
   const [loadingInfo] = useAtom(wallpaperInfoLoadingAtom);
+  const [infoError, setInfoError] = useAtom(wallpaperInfoErrorAtom);
+  const filteredWallpapers = useAtomValue(filteredWallpapersAtom);
+  const [applying] = useAtom(wallpaperApplyingAtom);
+  const [applyError, setApplyError] = useAtom(wallpaperApplyErrorAtom);
 
   const refreshInfo = useSetAtom(refreshWallpaperInfoAtom);
   const setFrequency = useSetAtom(setWallpaperFrequencyAtom);
   const setSkipToday = useSetAtom(setWallpaperSkipTodayAtom);
   const setMood = useSetAtom(setWallpaperMoodAtom);
   const toggleSource = useSetAtom(toggleWallpaperSourceAtom);
+  const applyWallpaper = useSetAtom(applyWallpaperAtom);
 
   const [fetching, setFetching] = useState(false);
+  const [targetApplyingPath, setTargetApplyingPath] = useState<string | null>(null);
+  const thumbsVersion = useAtomValue(wallpaperThumbsVersionAtom);
+  const [visibleCount, setVisibleCount] = useState(GRID_INITIAL_COUNT);
+  const gridSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleCount(GRID_INITIAL_COUNT);
+  }, [filteredWallpapers]);
+
+  useEffect(() => {
+    const el = gridSentinelRef.current;
+    if (!el || visibleCount >= filteredWallpapers.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((count) => Math.min(count + GRID_CHUNK, filteredWallpapers.length));
+        }
+      },
+      { rootMargin: "800px" },
+    );
+    observer.observe(el);
+    return (): void => observer.disconnect();
+  }, [visibleCount, filteredWallpapers.length]);
 
   useEffect(() => {
     void refreshInfo();
@@ -114,8 +320,30 @@ const WallpaperPage = (): React.JSX.Element => {
     }
   }, [refreshInfo]);
 
+  const handleApplyWallpaper = useCallback(
+    async (item: WallpaperItem): Promise<void> => {
+      setTargetApplyingPath(item.path);
+      try {
+        await applyWallpaper(item.path);
+      } finally {
+        setTargetApplyingPath(null);
+      }
+    },
+    [applyWallpaper],
+  );
+
   const selectedMood = wallpaper.selected_mood?.toLowerCase() ?? null;
-  const moodCount = selectedMood ? (info.mood_counts[selectedMood] ?? 0) : info.total_scanned || 0;
+  const moodCount = selectedMood
+    ? (info.mood_counts[selectedMood] ?? filteredWallpapers.length)
+    : info.total_scanned || filteredWallpapers.length || 0;
+
+  const currentWallpaperItem = info.wallpapers?.find(
+    (w) =>
+      w.path === info.current_wallpaper ||
+      (info.current_wallpaper &&
+        (info.current_wallpaper.endsWith(`/${w.filename}`) ||
+          info.current_wallpaper.endsWith(w.filename))),
+  );
 
   return (
     <div className="h-full overflow-y-auto scrollbar-thin">
@@ -134,7 +362,7 @@ const WallpaperPage = (): React.JSX.Element => {
         </div>
 
         {/* Active Wallpaper Hero */}
-        <section className="rounded-2xl border border-border bg-surface-elevated p-4 overflow-hidden relative min-h-[320px]">
+        <section className="rounded-2xl border border-border bg-surface-elevated p-4 overflow-hidden relative min-h-80">
           <div className="flex items-center justify-between z-10 mb-3">
             <span className="flex items-center gap-1.5 rounded-full bg-surface-active/80 px-3 py-1 text-[11px] font-semibold tracking-wide text-text-body backdrop-blur-md uppercase">
               <Compass size={12} className="text-accent" />
@@ -155,11 +383,12 @@ const WallpaperPage = (): React.JSX.Element => {
           </div>
 
           {/* Preview Image / Fallback Container */}
-          <div className="relative w-full min-h-[240px] rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
-            {info.image_base64 ? (
+          <div className="relative w-full min-h-60 rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
+            {resolveWallpaperUrl(info.current_wallpaper) ? (
               <img
-                src={info.image_base64}
+                src={resolveWallpaperUrl(info.current_wallpaper)}
                 alt="Current Wallpaper"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover"
               />
             ) : (
@@ -170,14 +399,21 @@ const WallpaperPage = (): React.JSX.Element => {
                 </span>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
             {/* Wallpaper Count Badge */}
-            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-black/50 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
-              <span>
-                {moodCount} {moodCount === 1 ? "wallpaper" : "wallpapers"}
-              </span>
+            <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 rounded-md bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                <span>
+                  {moodCount} {moodCount === 1 ? "wallpaper" : "wallpapers"}
+                </span>
+              </div>
+              {currentWallpaperItem && (
+                <div className="max-w-[60%] truncate rounded-md bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
+                  {currentWallpaperItem.name || currentWallpaperItem.filename}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -201,7 +437,7 @@ const WallpaperPage = (): React.JSX.Element => {
                   whileTap={{ scale: 0.98 }}
                   onClick={(): void => setMood(isSelected ? null : mood.id)}
                   className={`
-                    flex flex-col items-center justify-center p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden min-h-[95px]
+                    flex flex-col items-center justify-center p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden min-h-23.75
                     ${mood.bgClass}
                     ${
                       isSelected
@@ -238,11 +474,159 @@ const WallpaperPage = (): React.JSX.Element => {
                 : "All wallpapers"}
             </span>
             <span className="text-text-muted">
-              {info.total_scanned > 0
-                ? `${info.total_scanned} total wallpapers indexed`
-                : "Scanning local library..."}
+              {loadingInfo
+                ? "Scanning local library..."
+                : info.total_scanned > 0
+                  ? `${info.total_scanned} total wallpapers indexed`
+                  : "0 wallpapers indexed"}
             </span>
           </div>
+        </div>
+
+        {/* Gallery Section */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[13px] font-bold tracking-wide text-text-header">
+                {selectedMood
+                  ? `${selectedMood.charAt(0).toUpperCase() + selectedMood.slice(1)} Wallpapers`
+                  : "All Wallpapers"}
+              </h2>
+              <span className="rounded-full bg-surface-active px-2 py-0.5 text-[11px] font-semibold text-text-subtitle">
+                {filteredWallpapers.length}
+              </span>
+            </div>
+
+            {selectedMood !== null && (
+              <button
+                onClick={(): void => setMood(null)}
+                className="text-[11px] font-medium text-accent hover:underline cursor-pointer"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+
+          {/* Error Banner if wallpaper info load failed */}
+          <AnimatePresence>
+            {infoError && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="flex items-center justify-between gap-2 rounded-xl border border-danger/40 bg-danger-soft p-3 text-[12px] text-danger"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={15} />
+                  <span>{infoError}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(): void => void refreshInfo()}
+                    className="rounded-lg bg-danger/15 px-2 py-1 text-[11px] font-medium text-danger hover:bg-danger/25 cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    onClick={(): void => setInfoError(null)}
+                    className="p-1 text-danger/80 hover:text-danger cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Error Banner if wallpaper application failed */}
+          <AnimatePresence>
+            {applyError && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="flex items-center justify-between gap-2 rounded-xl border border-danger/40 bg-danger-soft p-3 text-[12px] text-danger"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={15} />
+                  <span>{applyError}</span>
+                </div>
+                <button
+                  onClick={(): void => setApplyError(null)}
+                  className="p-1 text-danger/80 hover:text-danger cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Loading Skeletons */}
+          {loadingInfo && filteredWallpapers.length === 0 && (
+            <div className="grid grid-cols-3 gap-3.5">
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="aspect-16/10 rounded-2xl border border-border bg-surface-elevated/60 animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Wallpapers Grid */}
+          {!loadingInfo && filteredWallpapers.length > 0 && (
+            <div className="grid grid-cols-3 gap-3.5">
+              {filteredWallpapers.slice(0, visibleCount).map((item) => {
+                const isActive = Boolean(
+                  info.current_wallpaper &&
+                  item.path &&
+                  (info.current_wallpaper === item.path ||
+                    info.current_wallpaper.endsWith(`/${item.filename}`) ||
+                    info.current_wallpaper.endsWith(item.filename)),
+                );
+                const isTargetApplying = applying && targetApplyingPath === item.path;
+
+                return (
+                  <WallpaperCard
+                    key={item.path}
+                    item={item}
+                    isActive={isActive}
+                    isApplying={isTargetApplying}
+                    thumbVersion={thumbsVersion}
+                    onSelect={handleApplyWallpaper}
+                  />
+                );
+              })}
+            </div>
+          )}
+          {!loadingInfo && visibleCount < filteredWallpapers.length && (
+            <div ref={gridSentinelRef} className="h-1 w-full" aria-hidden="true" />
+          )}
+
+          {/* Empty State */}
+          {!loadingInfo && filteredWallpapers.length === 0 && (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-elevated/40 p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-active text-text-muted">
+                <ImageIcon size={24} className="opacity-60" />
+              </div>
+              <div>
+                <h3 className="text-[13px] font-semibold text-text-header">No wallpapers found</h3>
+                <p className="mt-1 text-[11px] text-text-subtitle max-w-sm">
+                  {selectedMood
+                    ? `No wallpapers categorized under the "${selectedMood}" mood were found in your library.`
+                    : "No wallpapers found in ~/Pictures/wallpapers or indexed cache."}
+                </p>
+              </div>
+              {selectedMood && (
+                <button
+                  onClick={(): void => setMood(null)}
+                  className="rounded-xl border border-border bg-surface-active px-3 py-1.5 text-[11px] font-medium text-text-body hover:bg-surface-hover transition-colors cursor-pointer"
+                >
+                  Show all wallpapers
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Bottom Grid: Schedule & Sources */}
@@ -263,16 +647,11 @@ const WallpaperPage = (): React.JSX.Element => {
                       How often to fetch a new wallpaper
                     </div>
                   </div>
-                  <select
+                  <Dropdown
                     value={wallpaper.frequency}
-                    onChange={(e): void => setFrequency(e.target.value)}
-                    className="rounded-xl border border-border bg-surface-active px-3 py-1.5 text-[12px] font-medium text-text-body cursor-pointer hover:bg-surface-hover transition-colors"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="hourly">Hourly</option>
-                    <option value="startup">On startup</option>
-                    <option value="never">Never</option>
-                  </select>
+                    options={FREQUENCY_OPTIONS}
+                    onChange={(val): void => setFrequency(val)}
+                  />
                 </div>
 
                 {/* Skip Today */}

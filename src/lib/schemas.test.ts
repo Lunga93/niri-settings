@@ -9,11 +9,16 @@ import {
   SoundSettingsSchema,
   DisplayOutputSchema,
   KeybindingSchema,
-  WallpaperInfoSchema,
   AppErrorSchema,
   parseSettings,
   parseDisplayOutputs,
 } from "./schemas";
+import {
+  WallpaperItemSchema,
+  WallpaperListSchema,
+  WallpaperInfoSchema,
+  WallpaperThumbsResultSchema,
+} from "./schemas/wallpaper";
 
 // ── SettingsDataSchema ──
 
@@ -377,32 +382,150 @@ describe("KeybindingSchema", () => {
   });
 });
 
+// ── WallpaperItemSchema & WallpaperListSchema ──
+
+describe("WallpaperItemSchema", () => {
+  it("parses valid wallpaper item with defaults", () => {
+    const item = WallpaperItemSchema.parse({
+      path: "/home/user/Pictures/wallpapers/forest.jpg",
+    });
+    expect(item.path).toBe("/home/user/Pictures/wallpapers/forest.jpg");
+    expect(item.filename).toBe("");
+    expect(item.name).toBe("");
+    expect(item.moods).toEqual([]);
+    expect(item.file_size).toBe(0);
+    expect(item.mtime).toBe(0);
+  });
+
+  it("parses fully populated wallpaper item", () => {
+    const item = WallpaperItemSchema.parse({
+      path: "/home/user/Pictures/wallpapers/sunset.png",
+      filename: "sunset.png",
+      name: "sunset",
+      moods: ["warm", "sky"],
+      file_size: 2048576,
+      mtime: 1718000000,
+    });
+    expect(item.filename).toBe("sunset.png");
+    expect(item.name).toBe("sunset");
+    expect(item.moods).toEqual(["warm", "sky"]);
+    expect(item.file_size).toBe(2048576);
+  });
+});
+
+describe("WallpaperListSchema", () => {
+  it("parses empty list with defaults", () => {
+    const list = WallpaperListSchema.parse({});
+    expect(list.wallpapers).toEqual([]);
+    expect(list.total).toBe(0);
+  });
+
+  it("parses list with items", () => {
+    const list = WallpaperListSchema.parse({
+      wallpapers: [
+        {
+          path: "/path1.jpg",
+          filename: "path1.jpg",
+          name: "path1",
+          moods: ["dark"],
+          file_size: 1024,
+          mtime: 12345,
+        },
+      ],
+      total: 1,
+    });
+    expect(list.wallpapers).toHaveLength(1);
+    expect(list.total).toBe(1);
+  });
+});
+
 // ── WallpaperInfoSchema ──
 
 describe("WallpaperInfoSchema", () => {
   it("parses empty object with defaults", () => {
     const info = WallpaperInfoSchema.parse({});
     expect(info.current_wallpaper).toBe("");
-    expect(info.image_base64).toBe("");
     expect(info.total_scanned).toBe(0);
     expect(info.mood_counts).toEqual({});
     expect(info.wallpapers_by_mood).toEqual({});
+    expect(info.wallpapers).toEqual([]);
     expect(info.skip_today).toBe(false);
   });
 
   it("parses populated wallpaper info", () => {
     const info = WallpaperInfoSchema.parse({
       current_wallpaper: "/home/user/Pictures/wallpapers/daily.jpg",
-      image_base64: "data:image/jpeg;base64,123",
       total_scanned: 50,
       mood_counts: { dark: 20, light: 10 },
       wallpapers_by_mood: { dark: ["/path1"] },
+      wallpapers: [
+        {
+          path: "/path1",
+          filename: "path1.jpg",
+          name: "path1",
+          moods: ["dark"],
+          file_size: 1024,
+          mtime: 12345,
+        },
+      ],
       skip_today: true,
     });
     expect(info.current_wallpaper).toBe("/home/user/Pictures/wallpapers/daily.jpg");
     expect(info.total_scanned).toBe(50);
     expect(info.mood_counts.dark).toBe(20);
+    expect(info.wallpapers).toHaveLength(1);
+    expect(info.wallpapers[0].moods).toEqual(["dark"]);
     expect(info.skip_today).toBe(true);
+  });
+
+  it("safely handles null values from Go backend serialization (regression test)", () => {
+    const fixtureWithNulls = {
+      current_wallpaper: null,
+      total_scanned: null,
+      mood_counts: null,
+      wallpapers_by_mood: null,
+      wallpapers: [
+        {
+          path: "/home/user/Pictures/wallpapers/untagged.jpg",
+          filename: null,
+          name: null,
+          moods: null,
+          file_size: null,
+          mtime: null,
+          thumbnail: null,
+        },
+      ],
+      skip_today: null,
+    };
+
+    const parsed = WallpaperInfoSchema.safeParse(fixtureWithNulls);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.current_wallpaper).toBe("");
+      expect(parsed.data.mood_counts).toEqual({});
+      expect(parsed.data.wallpapers_by_mood).toEqual({});
+      expect(parsed.data.wallpapers).toHaveLength(1);
+      expect(parsed.data.wallpapers[0].moods).toEqual([]);
+      expect(parsed.data.wallpapers[0].filename).toBe("");
+      expect(parsed.data.wallpapers[0].thumbnail).toBe("");
+      expect(parsed.data.skip_today).toBe(false);
+    }
+  });
+});
+
+// ── WallpaperThumbsResultSchema ──
+
+describe("WallpaperThumbsResultSchema", () => {
+  it("parses a valid result", () => {
+    const result = WallpaperThumbsResultSchema.parse({ generated: 3, total: 42 });
+    expect(result.generated).toBe(3);
+    expect(result.total).toBe(42);
+  });
+
+  it("defaults null values to zero", () => {
+    const result = WallpaperThumbsResultSchema.parse({ generated: null, total: null });
+    expect(result.generated).toBe(0);
+    expect(result.total).toBe(0);
   });
 });
 
