@@ -312,7 +312,7 @@ const DisplayPage = (): React.JSX.Element => {
                               size={12}
                               className={isSelected ? "text-accent" : "text-text-subtitle"}
                             />
-                            <span className="text-[11px] font-bold text-text-header truncate max-w-[100px]">
+                            <span className="text-[11px] font-bold text-text-header truncate max-w-25">
                               {o.connector || o.name}
                             </span>
                           </div>

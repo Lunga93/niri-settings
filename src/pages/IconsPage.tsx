@@ -156,7 +156,7 @@ const IconsPage = (): React.JSX.Element => {
                     whileTap={{ scale: 0.92 }}
                     onClick={(): void => setCursorSize(size)}
                     className={`
-                      h-8 min-w-[36px] rounded-lg text-[11px] font-bold border transition-all cursor-pointer
+                      h-8 min-w-9 rounded-lg text-[11px] font-bold border transition-all cursor-pointer
                       ${
                         icons.cursor_size === size
                           ? "border-[#bf5af2] bg-[#bf5af2]/20 text-[#bf5af2] shadow-sm"

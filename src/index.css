@@ -48,6 +48,14 @@
   --font-mono: "MesloLGS Nerd Font Mono", "Fira Code", monospace;
 }
 
+:root {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 5px;
@@ -58,6 +66,19 @@
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-strong);
   border-radius: 999px;
+}
+
+/* ── Form Controls & Dropdown Fallbacks ── */
+select,
+option {
+  background-color: var(--color-surface-elevated, #221c14);
+  color: var(--color-text-header, #f5ede0);
+}
+
+option:checked,
+option:hover {
+  background-color: var(--color-accent, #0a84ff);
+  color: #ffffff;
 }
 
 /* ── Base ── */
