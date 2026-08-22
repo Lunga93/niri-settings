@@ -1,12 +1,13 @@
 import { atom } from "jotai";
+import type { Getter, Setter, WritableAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import {
   SettingsDataSchema,
-  WallpaperInfoSchema,
   type SettingsData,
-  type WallpaperInfo,
+  type AppearanceSettings,
+  type SoundSettings,
 } from "@/lib/schemas";
-import { writeSettings, readSettings, setGSetting, getWallpaperInfo } from "@/lib/services";
+import { writeSettings, readSettings, setGSetting } from "@/lib/services";
 import { execScript } from "@/lib/sidecar";
 import { logger, sidecarLogger } from "@/lib/logger";
 
@@ -17,14 +18,33 @@ const DEFAULT_SETTINGS: SettingsData = SettingsDataSchema.parse({});
 export const settingsAtom = atomWithStorage<SettingsData>("niri-settings-data", DEFAULT_SETTINGS);
 
 // ── Derived read atoms (per section) ──
-export const wallpaperAtom = atom((get) => get(settingsAtom).wallpaper);
 export const appearanceAtom = atom((get) => get(settingsAtom).appearance);
 export const topBarAtom = atom((get) => get(settingsAtom).top_bar);
 export const displayAtom = atom((get) => get(settingsAtom).display);
 export const iconsAtom = atom((get) => get(settingsAtom).icons);
 export const soundAtom = atom((get) => get(settingsAtom).sound);
 
-// ── Write atoms with embedded side effects ──
+// ── Settings mutation helper ──
+
+/**
+ * Applies a mutation to the settings snapshot, stores the result,
+ * persists it to disk and runs an optional side effect.
+ */
+const commitSettings = (
+  get: Getter,
+  set: Setter,
+  mutate: (prev: SettingsData) => SettingsData,
+  sideEffect?: (next: SettingsData) => void,
+): void => {
+  const next = mutate(get(settingsAtom));
+  set(settingsAtom, next);
+  writeSettings(next).catch((err) => {
+    sidecarLogger.error("Failed to persist settings", err);
+  });
+  sideEffect?.(next);
+};
+
+// ── Generic write atoms ──
 
 /**
  * Write to any settings field. Persists to disk and triggers side effects.
@@ -32,25 +52,18 @@ export const soundAtom = atom((get) => get(settingsAtom).sound);
 export const setSettingsFieldAtom = atom(
   null,
   (get, set, update: { section: keyof SettingsData; key: string; value: unknown }) => {
-    const prev = get(settingsAtom);
-    const sectionData = prev[update.section];
-    const next = {
-      ...prev,
-      [update.section]: {
-        ...sectionData,
-        [update.key]: update.value,
-      },
-    };
-
-    set(settingsAtom, next);
-
-    // Persist to disk (fire-and-forget)
-    writeSettings(next).catch((err) => {
-      sidecarLogger.error("Failed to persist settings", err);
-    });
-
-    // Trigger section-specific side effects
-    triggerSideEffects(update.section, next);
+    commitSettings(
+      get,
+      set,
+      (prev) => ({
+        ...prev,
+        [update.section]: {
+          ...prev[update.section],
+          [update.key]: update.value,
+        },
+      }),
+      (next) => triggerSideEffects(update.section, next),
+    );
   },
 );
 
@@ -64,22 +77,18 @@ export const setSettingsSectionAtom = atom(
     set,
     update: { section: keyof SettingsData; partial: Partial<SettingsData[keyof SettingsData]> },
   ) => {
-    const prev = get(settingsAtom);
-    const next = {
-      ...prev,
-      [update.section]: {
-        ...prev[update.section],
-        ...update.partial,
-      },
-    };
-
-    set(settingsAtom, next);
-
-    writeSettings(next).catch((err) => {
-      sidecarLogger.error("Failed to persist settings", err);
-    });
-
-    triggerSideEffects(update.section, next);
+    commitSettings(
+      get,
+      set,
+      (prev) => ({
+        ...prev,
+        [update.section]: {
+          ...prev[update.section],
+          ...update.partial,
+        },
+      }),
+      (next) => triggerSideEffects(update.section, next),
+    );
   },
 );
 
@@ -95,241 +104,165 @@ export const loadSettingsAtom = atom(null, async (_get, set) => {
   }
 });
 
-// ── Appearance-specific write atoms (multi-field updates) ──
+// ── Appearance-specific write atoms ──
 
 export const setColorSchemeAtom = atom(null, (get, set, scheme: "dark" | "light") => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    appearance: { ...prev.appearance, color_scheme: scheme },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("appearance", next);
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, appearance: { ...prev.appearance, color_scheme: scheme } }),
+    (next) => triggerSideEffects("appearance", next),
+  );
 });
 
-export const setAccentColorAtom = atom(null, (get, set, color: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    appearance: {
-      ...prev.appearance,
-      accent_mode: "manual" as const,
-      manual_primary: color,
-    },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("appearance", next);
-});
+const accentColorAtom = (
+  key: "manual_primary" | "manual_secondary",
+): WritableAtom<null, [color: string], void> =>
+  atom(null, (get, set, color: string) => {
+    commitSettings(
+      get,
+      set,
+      (prev) => {
+        const appearance: AppearanceSettings = { ...prev.appearance, accent_mode: "manual" };
+        appearance[key] = color;
+        return { ...prev, appearance };
+      },
+      (next) => triggerSideEffects("appearance", next),
+    );
+  });
 
-export const setAccentSecondaryAtom = atom(null, (get, set, color: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    appearance: {
-      ...prev.appearance,
-      accent_mode: "manual" as const,
-      manual_secondary: color,
-    },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("appearance", next);
-});
+export const setAccentColorAtom = accentColorAtom("manual_primary");
+
+export const setAccentSecondaryAtom = accentColorAtom("manual_secondary");
 
 export const setAccentModeAtom = atom(null, (get, set, mode: "dynamic" | "manual") => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    appearance: { ...prev.appearance, accent_mode: mode },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("appearance", next);
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, appearance: { ...prev.appearance, accent_mode: mode } }),
+    (next) => triggerSideEffects("appearance", next),
+  );
 });
 
 // ── Display-specific write atoms ──
 
 export const setDisplayScaleAtom = atom(null, (get, set, scale: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    display: { ...prev.display, scale },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  execScript("~/.local/bin/apply-display-scale").catch((err) => {
-    logger.warn("Failed to apply display scale", err);
-  });
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, display: { ...prev.display, scale } }),
+    () => {
+      execScript("~/.local/bin/apply-display-scale").catch((err) => {
+        logger.warn("Failed to apply display scale", err);
+      });
+    },
+  );
 });
 
 export const setNightLightAtom = atom(null, (get, set, enabled: boolean) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    display: { ...prev.display, night_light_enabled: enabled },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  execScript("~/.local/bin/night-light").catch((err) => {
-    logger.warn("Failed to apply night light", err);
-  });
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, display: { ...prev.display, night_light_enabled: enabled } }),
+    () => {
+      execScript("~/.local/bin/night-light").catch((err) => {
+        logger.warn("Failed to apply night light", err);
+      });
+    },
+  );
 });
 
 export const setNightLightTempAtom = atom(null, (get, set, temp: number) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    display: { ...prev.display, night_light_temperature: temp },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  execScript("~/.local/bin/night-light").catch((err) => {
-    logger.warn("Failed to apply night light", err);
-  });
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, display: { ...prev.display, night_light_temperature: temp } }),
+    () => {
+      execScript("~/.local/bin/night-light").catch((err) => {
+        logger.warn("Failed to apply night light", err);
+      });
+    },
+  );
 });
 
 // ── Icons-specific write atoms ──
 
 export const setIconThemeAtom = atom(null, (get, set, theme: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    icons: { ...prev.icons, icon_theme: theme },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  setGSetting("org.gnome.desktop.interface", "icon-theme", theme).catch(() => undefined);
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, icons: { ...prev.icons, icon_theme: theme } }),
+    () => {
+      setGSetting("org.gnome.desktop.interface", "icon-theme", theme).catch(() => undefined);
+    },
+  );
 });
 
 export const setCursorThemeAtom = atom(null, (get, set, theme: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    icons: { ...prev.icons, cursor_theme: theme },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  setGSetting("org.gnome.desktop.interface", "cursor-theme", theme).catch(() => undefined);
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, icons: { ...prev.icons, cursor_theme: theme } }),
+    () => {
+      setGSetting("org.gnome.desktop.interface", "cursor-theme", theme).catch(() => undefined);
+    },
+  );
 });
 
 export const setCursorSizeAtom = atom(null, (get, set, size: number) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    icons: { ...prev.icons, cursor_size: size },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  setGSetting("org.gnome.desktop.interface", "cursor-size", String(size)).catch(() => undefined);
+  commitSettings(
+    get,
+    set,
+    (prev) => ({ ...prev, icons: { ...prev.icons, cursor_size: size } }),
+    () => {
+      setGSetting("org.gnome.desktop.interface", "cursor-size", String(size)).catch(
+        () => undefined,
+      );
+    },
+  );
 });
 
 // ── Sound-specific write atoms ──
 
-export const setOutputVolumeAtom = atom(null, (get, set, vol: number) => {
-  const prev = get(settingsAtom);
-  const next = { ...prev, sound: { ...prev.sound, output_volume: vol } };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("sound", next);
-});
+const soundVolumeFieldAtom = (
+  key: "output_volume" | "input_volume",
+): WritableAtom<null, [volume: number], void> =>
+  atom(null, (get, set, volume: number) => {
+    commitSettings(
+      get,
+      set,
+      (prev) => {
+        const sound: SoundSettings = { ...prev.sound };
+        sound[key] = volume;
+        return { ...prev, sound };
+      },
+      (next) => triggerSideEffects("sound", next),
+    );
+  });
 
-export const setOutputMutedAtom = atom(null, (get, set, muted: boolean) => {
-  const prev = get(settingsAtom);
-  const next = { ...prev, sound: { ...prev.sound, output_muted: muted } };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("sound", next);
-});
+const soundMutedFieldAtom = (
+  key: "output_muted" | "input_muted",
+): WritableAtom<null, [muted: boolean], void> =>
+  atom(null, (get, set, muted: boolean) => {
+    commitSettings(
+      get,
+      set,
+      (prev) => {
+        const sound: SoundSettings = { ...prev.sound };
+        sound[key] = muted;
+        return { ...prev, sound };
+      },
+      (next) => triggerSideEffects("sound", next),
+    );
+  });
 
-export const setInputVolumeAtom = atom(null, (get, set, vol: number) => {
-  const prev = get(settingsAtom);
-  const next = { ...prev, sound: { ...prev.sound, input_volume: vol } };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("sound", next);
-});
+export const setOutputVolumeAtom = soundVolumeFieldAtom("output_volume");
 
-export const setInputMutedAtom = atom(null, (get, set, muted: boolean) => {
-  const prev = get(settingsAtom);
-  const next = { ...prev, sound: { ...prev.sound, input_muted: muted } };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  triggerSideEffects("sound", next);
-});
+export const setInputVolumeAtom = soundVolumeFieldAtom("input_volume");
 
-// ── Wallpaper-specific write atoms ──
+export const setOutputMutedAtom = soundMutedFieldAtom("output_muted");
 
-export const DEFAULT_WALLPAPER_INFO: WallpaperInfo = WallpaperInfoSchema.parse({});
-export const wallpaperInfoAtom = atom<WallpaperInfo>(DEFAULT_WALLPAPER_INFO);
-export const wallpaperInfoLoadingAtom = atom<boolean>(false);
-
-export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
-  set(wallpaperInfoLoadingAtom, true);
-  try {
-    const info = await getWallpaperInfo();
-    if (info) {
-      set(wallpaperInfoAtom, info);
-    }
-  } catch (err) {
-    logger.warn("Failed to refresh wallpaper info", err);
-  } finally {
-    set(wallpaperInfoLoadingAtom, false);
-  }
-});
-
-export const setWallpaperFrequencyAtom = atom(null, (get, set, freq: string) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    wallpaper: { ...prev.wallpaper, frequency: freq },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-});
-
-export const setWallpaperSkipTodayAtom = atom(null, (get, set, skip: boolean) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    wallpaper: { ...prev.wallpaper, skip_today: skip },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-  // Also sync skip_today file
-  if (skip) {
-    execScript(
-      `mkdir -p ~/.local/share/dotfiles && date +%F > ~/.local/share/dotfiles/skip_today`,
-    ).catch(() => undefined);
-  } else {
-    execScript(`rm -f ~/.local/share/dotfiles/skip_today`).catch(() => undefined);
-  }
-});
-
-export const setWallpaperMoodAtom = atom(null, (get, set, mood: string | null) => {
-  const prev = get(settingsAtom);
-  const next = {
-    ...prev,
-    wallpaper: { ...prev.wallpaper, selected_mood: mood },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-});
-
-export const toggleWallpaperSourceAtom = atom(null, (get, set, source: string) => {
-  const prev = get(settingsAtom);
-  const current = prev.wallpaper.sources_enabled[source] ?? false;
-  const next = {
-    ...prev,
-    wallpaper: {
-      ...prev.wallpaper,
-      sources_enabled: { ...prev.wallpaper.sources_enabled, [source]: !current },
-    },
-  };
-  set(settingsAtom, next);
-  writeSettings(next).catch(() => undefined);
-});
+export const setInputMutedAtom = soundMutedFieldAtom("input_muted");
 
 // ── Side effect dispatcher ──
 
