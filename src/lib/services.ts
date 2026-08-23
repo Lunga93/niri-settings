@@ -23,7 +23,7 @@ const SetWallpaperResultSchema = z.object({
 });
 
 /**
- * Reads the settings.json file from disk via the sidecar.
+ * Reads the settings.json file from the disk via the sidecar.
  * Returns validated SettingsData or null on failure.
  */
 export const readSettings = async (): Promise<SettingsData | null> => {
@@ -49,7 +49,7 @@ export const readSettings = async (): Promise<SettingsData | null> => {
 
 /**
  * Writes the settings data to disk via the sidecar.
- * Auto-reloads quickshell after write.
+ * Auto-reloads quickshell after writing.
  * Writes are serialized: rapid slider ticks must not interleave
  * and let an older snapshot overwrite a newer one.
  */
@@ -146,7 +146,7 @@ export const setGSetting = async (schema: string, key: string, value: string): P
 };
 
 /**
- * Reads an arbitrary file from disk.
+ * Reads an arbitrary file from the disk.
  */
 export const readFile = async (path: string): Promise<string | null> => {
   try {

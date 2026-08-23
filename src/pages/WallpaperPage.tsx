@@ -163,12 +163,9 @@ const WallpaperCard: React.FC<WallpaperCardProps> = ({
   const statusBySrc = useAtomValue(thumbStatusAtom);
 
   const imageUrl = resolveWallpaperUrl(item.thumbnail);
-  // Version param makes every thumbs-version bump a distinct URL so the
-  // webview genuinely refetches (and retries previously failed) thumbnails.
   const versionedUrl = thumbVersion > 0 ? `${imageUrl}?v=${thumbVersion}` : imageUrl;
 
-  // Cached images can finish loading before React attaches onLoad, so also
-  // verify <img>.complete after render; global atom survives remounts.
+  // Cached images can finish loading before React attaches onLoad.
   const imgRef = useRef<HTMLImageElement | null>(null);
   useEffect(() => {
     const el = imgRef.current;
@@ -307,13 +304,13 @@ const WallpaperPage = (): React.JSX.Element => {
 
   useEffect(() => {
     const currentMood = wallpaper.selected_mood ?? null;
-    // First run after a remount: keep whatever the atom preserved.
     if (previousMoodRef.current === undefined) {
+      // First run after a remount: keep whatever the atom preserved.
       previousMoodRef.current = currentMood;
       return;
     }
-    // Reset the reveal window only when the mood filter changes — not on
-    // every refetch (new array identity).
+    // Reveal window resets only when the mood filter actually changes,
+    // not on refetches that merely produce a new array identity.
     if (previousMoodRef.current !== currentMood) {
       previousMoodRef.current = currentMood;
       setVisibleCount(GRID_INITIAL_COUNT);
@@ -416,9 +413,8 @@ const WallpaperPage = (): React.JSX.Element => {
           {/* Preview Image / Fallback Container */}
           <div className="relative w-full min-h-60 rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
             {(() => {
-              // fetch-wallpaper overwrites daily.jpg in place, so the URL is
-              // unchanged after a fetch; version it like gallery thumbs so the
-              // webview reloads instead of serving cached bytes.
+              // Versioned like thumbs: fetch-wallpaper replaces daily.jpg in
+              // place, leaving the URL unchanged.
               const heroBase = resolveWallpaperUrl(info.current_wallpaper);
               const heroUrl =
                 heroBase && thumbsVersion > 0 ? `${heroBase}?v=${thumbsVersion}` : heroBase;

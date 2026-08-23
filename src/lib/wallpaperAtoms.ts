@@ -23,12 +23,8 @@ export const wallpaperApplyErrorAtom = atom<string | null>(null);
 export const selectedWallpaperPathAtom = atom<string | null>(null);
 export const wallpaperThumbsVersionAtom = atom<number>(0);
 
-/**
- * Confirmed load state per thumbnail URL ("loaded" | "error"). Global because a
- * confirmed result must survive card unmounts/remounts: <img onLoad> can fire
- * before React attaches its listener when the webview serves a cached image,
- * which would otherwise leave per-card state stuck at "loading" forever.
- */
+// Per-URL confirmed load state. Global because cached images can fire onLoad
+// before React attaches listeners; per-card state would stay stuck at loading.
 export type ThumbLoadStatus = "loaded" | "error";
 export const thumbStatusAtom = atom<Record<string, ThumbLoadStatus>>({});
 export const markThumbStatusAtom = atom(
@@ -38,15 +34,8 @@ export const markThumbStatusAtom = atom(
     set(thumbStatusAtom, { ...get(thumbStatusAtom), [params.src]: params.status });
   },
 );
-/**
- * How many gallery cards are revealed. Stored in an atom (not component state)
- * so navigating away and back does not collapse the grid back to the first page.
- */
 export const galleryVisibleCountAtom = atom<number>(24);
 
-/**
- * Wallpapers filtered by the currently active mood (or all if selected_mood is null).
- */
 export const filteredWallpapersAtom = atom<WallpaperItem[]>((get) => {
   const info = get(wallpaperInfoAtom);
   const selectedMood = get(wallpaperAtom).selected_mood;
@@ -103,11 +92,8 @@ export const filteredWallpapersAtom = atom<WallpaperItem[]>((get) => {
   );
 });
 
-/**
- * Shared in-flight promise so concurrent callers (page mount, manual refresh
- * button, React StrictMode's double-invoked effects) trigger exactly one
- * sidecar cycle instead of racing duplicates.
- */
+// Shared in-flight promise: concurrent callers (StrictMode double-mount,
+// refresh button) join one sidecar cycle instead of racing duplicates.
 let inflightRefresh: Promise<void> | null = null;
 
 export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
@@ -124,19 +110,15 @@ export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
           `Wallpaper info loaded: ${info.total_scanned} wallpapers scanned, current: ${info.current_wallpaper || "none"}`,
         );
         try {
-          // Always resolves { generated, total }; generated is the number of
-          // thumbnails the sidecar had to (re)create this run.
+          // Bumping the version reloads every thumb URL; skip it when nothing
+          // regenerated or revisiting the page flashes the grid to skeletons.
           const thumbs = await ensureWallpaperThumbs();
-          // Only bust card image caches when thumbnails were actually
-          // (re)generated; otherwise revisiting the page would flash the whole
-          // grid back to skeletons for no reason.
           if (thumbs.generated > 0) {
             logger.info(`Thumbnails refreshed: ${thumbs.generated} generated of ${thumbs.total}`);
             set(wallpaperThumbsVersionAtom, (v) => v + 1);
           }
         } catch {
-          // ensureWallpaperThumbs already logged via service layer; keep the
-          // info payload that did load usable.
+          // Logged in the service layer; info payload is still usable.
         }
       } else {
         set(wallpaperInfoErrorAtom, "Unable to retrieve wallpapers from sidecar backend.");
@@ -161,14 +143,8 @@ export const selectWallpaperAtom = atom(null, (_get, set, path: string | null) =
   set(selectedWallpaperPathAtom, path);
 });
 
-/**
- * Runs the external fetch-wallpaper script and syncs every piece of app state
- * the script changes out-of-band. The script overwrites daily.jpg in place, so
- * current_wallpaper's path string is unchanged afterwards; without a forced
- * thumbs-version bump the webview would keep serving cached copies of the old
- * bytes under identical URLs. Theme is re-read for the same reason manual
- * selection refreshes it.
- */
+// fetch-wallpaper replaces daily.jpg in place, so current_wallpaper keeps its
+// old URL — bump the thumbs version and re-read the theme like a manual apply.
 export const fetchNewWallpaperAtom = atom(null, async (get, set): Promise<boolean> => {
   try {
     await execScript("~/.local/bin/fetch-wallpaper");
@@ -177,7 +153,6 @@ export const fetchNewWallpaperAtom = atom(null, async (get, set): Promise<boolea
     return false;
   }
   await set(refreshWallpaperInfoAtom);
-  // Files were replaced on disk under unchanged paths: bust image caches.
   set(wallpaperThumbsVersionAtom, (v) => v + 1);
   try {
     const themeData = await getThemeColors();
@@ -245,7 +220,6 @@ export const setWallpaperSkipTodayAtom = atom(null, (get, set, skip: boolean) =>
   };
   set(settingsAtom, next);
   writeSettings(next).catch(() => undefined);
-  // Also sync skip_today file
   if (skip) {
     execScript(
       `mkdir -p ~/.local/share/dotfiles && date +%F > ~/.local/share/dotfiles/skip_today`,
