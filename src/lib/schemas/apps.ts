@@ -30,3 +30,16 @@ export const DefaultAppsPayloadSchema = z.object({
 export const SetDefaultResponseSchema = z.object({
   status: z.literal("ok"),
 });
+
+export const HelperScriptResultSchema = z.object({
+  script: z.string(),
+  status: z.enum(["installed", "updated", "kept"]),
+  detail: z.string(),
+});
+export type HelperScriptResult = z.infer<typeof HelperScriptResultSchema>;
+
+export const InstallHelpersResponseSchema = z.object({
+  dir: z.string(),
+  results: z.array(HelperScriptResultSchema),
+});
+export type InstallHelpersResponse = z.infer<typeof InstallHelpersResponseSchema>;

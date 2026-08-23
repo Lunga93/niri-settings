@@ -8,6 +8,18 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — One-click Tier 1 setup (no terminal, no env vars)
+
+**Problem:** Getting Tier 1 on a bare niri install previously meant cloning the dotfiles repo, hand-copying five scripts, making them executable, and installing pywal/wlsunset — hopeless for non-technical users.
+
+**Fix:** New **"Tier 1 — Appearance Helpers"** card on System Info. One button installs bundled, self-contained helper scripts (`set-wallpaper`, `apply-theme`, `night-light`, `apply-display-scale`) into the standard local bin directory (`NIRI_SCRIPT_BIN_DIR` → `XDG_BIN_HOME` → `~/.local/bin`), which the app already resolves without any environment configuration. The scripts are minimal but functional on bare systems: wallpaper state file + awww/swww if present, pywal palette regeneration when installed, wlsunset-driven night light reading the shared settings file, gsettings text scaling.
+
+**Safety guarantee:** existing scripts *without* our marker (`niri-settings-managed`) are reported as "kept" and never overwritten — users with custom or dotfiles-managed versions lose nothing (verified live: all four kept on this machine). After installing, capabilities re-probe automatically and page-level notices disappear.
+
+**Optional engines:** when pywal isn't detected (`pywal_cache` capability false), the card shows a copy-pasteable `sudo pacman -S --needed pywal wlsunset` hint — the only terminal step, and purely optional.
+
+Sidecar `setup` package with 4 hermetic tests covering install dir priority, exec bits, foreign-script preservation, and managed-script updates.
+
 ## 2026-08-23 — Default Apps page; startup picker replaces the form; glass design refresh
 
 **New page — Default Apps** (Personalization): curated MIME categories (browser, email, editor, images, music, video, file manager) showing the active handler with a dropdown of every installed application that actually declares support for that content type. Applied system-wide via `xdg-mime`; optimistic update with server reconciliation. Powered by a new sidecar `apps` package: XDG-compliant desktop-entry scanner (`XDG_DATA_HOME`/`XDG_DATA_DIRS`, user dirs win, Flatpak exports included, `NoDisplay`/`Hidden` skipped, `%f/%u/…` field codes stripped, semicolon-separated MimeType parsing) with 8 hermetic tests.
@@ -18,7 +30,7 @@ Entries are newest-first. Pair every entry with a git commit (conventional commi
 
 ## 2026-08-23 — Startup Applications page; dex runner fixed on live config
 
-**Feature:** New "Startup Apps" page under System managing XDG autostart entries (`~/.config/autostart/*.desktop`): list with enable/disable toggles (Hidden/NoDisplay flags), add-by-name+command form, delete. Because niri does not process XDG autostart itself, the page detects whether a runner exists — `dex`/`wlautostart` on `$PATH` **and** a `spawn-at-startup` line in the niri config — and offers a one-click, idempotent fix that appends `spawn-at-startup "dex -a"` when missing.
+**Feature:** New "Startup Apps" page under System managing XDG autostart entries (`~/.config/autostart/*.desktop`): list with enable/disable toggles (Hidden/NoDisplay flags), delete, and a searchable installed-application picker (add-by-name+command demoted to custom fallback). Because niri does not process XDG autostart itself, the page detects whether a runner exists — `dex`/`wlautostart` on `$PATH` **and** a `spawn-at-startup` line in the niri config — and offers a one-click, idempotent fix that appends `spawn-at-startup "dex -a"` when missing.
 
 **Live fix applied:** The probe revealed this machine had a JetBrains Toolbox autostart entry and `dex` installed but no runner line, so autostart entries silently never ran at login. The runner line was added to `~/.config/niri/config.kdl` (pre-change backup: `/tmp/opencode/config.kdl.pre-dex`).
 

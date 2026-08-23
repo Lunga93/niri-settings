@@ -15,6 +15,7 @@ import (
 	"niri-settings-sidecar/niri"
 	"niri-settings-sidecar/protocol"
 	"niri-settings-sidecar/settings"
+	"niri-settings-sidecar/setup"
 	"niri-settings-sidecar/startup"
 	"niri-settings-sidecar/system"
 	"niri-settings-sidecar/theme"
@@ -59,6 +60,7 @@ var registry = map[string]protocol.Handler{
 	"list_installed_apps":     apps.HandleListInstalledApps,
 	"list_default_apps":       apps.HandleListDefaultApps,
 	"set_default_app":         apps.HandleSetDefaultApp,
+	"install_helper_scripts":  setup.HandleInstallHelperScripts,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,
