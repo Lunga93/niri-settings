@@ -7,3 +7,4 @@ export * from "./audio";
 export * from "./theme";
 export * from "./keybindings";
 export * from "./system";
+export * from "./startup";

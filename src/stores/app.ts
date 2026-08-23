@@ -6,6 +6,7 @@ export type PageId =
   | "icons"
   | "display"
   | "keybindings"
+  | "startup"
   | "network"
   | "sound"
   | "sysinfo";
@@ -35,6 +36,7 @@ export const SIDEBAR_SECTIONS: readonly SidebarSection[] = [
     items: [
       { id: "display", label: "Display", icon: "monitor" },
       { id: "keybindings", label: "Keybindings", icon: "keyboard" },
+      { id: "startup", label: "Startup Apps", icon: "rocket" },
       { id: "network", label: "Network", icon: "wifi" },
       { id: "sound", label: "Sound", icon: "volume-2" },
     ],

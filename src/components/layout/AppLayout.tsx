@@ -9,6 +9,7 @@ import AppearancePage from "@/pages/AppearancePage";
 import IconsPage from "@/pages/IconsPage";
 import DisplayPage from "@/pages/DisplayPage";
 import KeybindingsPage from "@/pages/KeybindingsPage";
+import StartupAppsPage from "@/pages/StartupAppsPage";
 import NetworkPage from "@/pages/NetworkPage";
 import SoundPage from "@/pages/SoundPage";
 import SysInfoPage from "@/pages/SysInfoPage";
@@ -20,6 +21,7 @@ const PAGE_COMPONENTS: Record<string, React.ComponentType> = {
   icons: IconsPage,
   display: DisplayPage,
   keybindings: KeybindingsPage,
+  startup: StartupAppsPage,
   network: NetworkPage,
   sound: SoundPage,
   sysinfo: SysInfoPage,

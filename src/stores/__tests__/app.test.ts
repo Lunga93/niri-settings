@@ -53,9 +53,9 @@ describe("SIDEBAR_SECTIONS", () => {
     expect(ids).toEqual(["wallpaper", "appearance", "icons"]);
   });
 
-  it("System has display, keybindings, network, sound", () => {
+  it("System has display, keybindings, startup, network, sound", () => {
     const ids = SIDEBAR_SECTIONS[1].items.map((i) => i.id);
-    expect(ids).toEqual(["display", "keybindings", "network", "sound"]);
+    expect(ids).toEqual(["display", "keybindings", "startup", "network", "sound"]);
   });
 
   it("About has sysinfo", () => {

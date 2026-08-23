@@ -8,6 +8,14 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Startup Applications page; dex runner fixed on live config
+
+**Feature:** New "Startup Apps" page under System managing XDG autostart entries (`~/.config/autostart/*.desktop`): list with enable/disable toggles (Hidden/NoDisplay flags), add-by-name+command form, delete. Because niri does not process XDG autostart itself, the page detects whether a runner exists — `dex`/`wlautostart` on `$PATH` **and** a `spawn-at-startup` line in the niri config — and offers a one-click, idempotent fix that appends `spawn-at-startup "dex -a"` when missing.
+
+**Live fix applied:** The probe revealed this machine had a JetBrains Toolbox autostart entry and `dex` installed but no runner line, so autostart entries silently never ran at login. The runner line was added to `~/.config/niri/config.kdl` (pre-change backup: `/tmp/opencode/config.kdl.pre-dex`).
+
+**Implementation:** Sidecar `startup` package (parse/serialize desktop entries, slug ids, hidden-flag preservation on update, path-escape rejection) + handlers registered as `list_startup_apps`, `upsert_startup_app`, `set_startup_app_enabled`, `delete_startup_app`, `ensure_autostart_runner`. Frontend: schema/service/store/page wired into the sidebar (Rocket icon), optimistic toggle with reload-on-failure reconciliation.
+
 ## 2026-08-23 — Portable script discovery; no more hardcoded install paths
 
 **Symptom:** Helper scripts were assumed to live in `~/.local/bin` and the frontend invoked them by absolute path in shell strings (`~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`). On any machine that installs them elsewhere — or only on `$PATH` — capabilities reported false while invocations failed, or vice versa.
