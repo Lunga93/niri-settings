@@ -8,6 +8,19 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — App icon, release bundles, portable installer
+
+**What:** First distributable release of niri-settings.
+
+- Custom app icon: settings-gear glyph on slate gradient (`assets/icon.svg` seed → full set via `npx tauri icon`). Bundled into deb/rpm/AppImage desktop entries + hicolor icons.
+- Release pipeline proven end-to-end: optimized sidecar (`-trimpath -ldflags "-s -w"`, 3.0 MB vs 4.6 MB debug) → `tauri build` → `niri-settings_0.1.0_amd64.{AppImage,deb}` + `.rpm`.
+- Parity verified: release sidecar output identical to debug (only randomized `wallpapers_by_mood` seed names differ, by design); raw binary and extracted AppImage both resolve the sidecar exe-adjacent and pass live smoke tests.
+- Portable tarball via `packaging/make-tarball.sh` with user-local `install.sh`/`uninstall.sh` (XDG bin/desktop/hicolor-icon layout). Installed on this system at `~/.local/bin/niri-settings`; launcher entry "Niri Settings".
+- Arch note: AppImage bundling needs `APPIMAGE_EXTRACT_AND_RUN=1`.
+- New code standard (#6): no inline SVGs in TSX — lucide-react or components under `src/components/icons/`; standalone SVG files are build inputs only.
+
+**Regression hints:** Missing icon after rebuild ⇒ re-run `npx tauri icon assets/icon.svg`. Sidecar-not-found in an installed copy ⇒ the two binaries must stay siblings (`install.sh` guarantees this).
+
 ## 2026-08-23 — Frontend split into layered folders (ipc / services / schemas / stores)
 
 **Symptom:** `src/lib/` was flat spaghetti: `services.ts` (426 lines) handled every domain (settings, niri config, displays, audio, wallpaper, theme, files, gsettings); state lived in two homes (`lib/*Atoms.ts` and `stores/`); transport, schemas, logging and logic shared one directory; tests sat beside sources.

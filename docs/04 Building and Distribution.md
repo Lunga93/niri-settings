@@ -35,8 +35,32 @@ cp src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu \
 ./src-tauri/target/release/niri-settings
 ```
 
-> [!warning] Step ③ is required
-> `tauri.conf.json` currently has **no `bundle.externalBin`**, so step ① does **not** package the Go helper. Skipping ③ yields an app that launches but fails on every action ("Failed to spawn sidecar").
+> [!note] AppImage on Arch/CachyOS
+> The linuxdeploy step needs `APPIMAGE_EXTRACT_AND_RUN=1` (fuse2 is not a default there):
+> `APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true npx tauri build --bundles appimage`
+
+## 1b. Full release pipeline (proven 2026-08-23)
+
+```sh
+# ① optimized sidecar → canonical externalBin path + target/release (for raw runs)
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu ./sidecar
+cp src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu \
+   src-tauri/target/release/niri-settings-sidecar
+
+# ② bundles: deb + rpm + appimage (see note above for the appimage env)
+npx tauri build
+
+# ③ portable tarball with install/uninstall scripts
+./packaging/make-tarball.sh        # → release/niri-settings-<ver>-linux-x86_64.tar.gz
+
+# ④ install user-local (no root) — desktop entry + hicolor icons included
+tar -xzf release/niri-settings-*.tar.gz -C /tmp/pkg && /tmp/pkg/install.sh
+```
+
+**Parity verification** (run before shipping): pipe `{"command":"get_wallpaper_info","args":{}}`
+through the debug (`binaries/`) and release sidecars and diff — only `wallpapers_by_mood`
+seed names may differ (randomized per invocation by design). Then launch each artifact once
+and confirm `[tauri:sidecar] Command '...' succeeded` log lines.
 
 ## 2. Sidecar bundling — wired via `externalBin` (configured 2026-08-22)
 
@@ -75,7 +99,7 @@ Install with e.g. `sudo apt install ./src-tauri/target/release/bundle/deb/niri-s
 
 ## 5. Release checklist
 
-1. Bump version in both `package.json` and `src-tauri/tauri.conf.json` (+ `Cargo.toml` if you care).
+1. Bump version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
 2. `npm test && npm run lint && npm run typecheck`.
-3. Full build per section 1 or 2; launch the artifact once and change a setting to prove the sidecar works from the installed location.
-4. Commit the tag — remember the repo currently has no commits/history yet.
+3. Full pipeline per section 1b; run the parity check; launch the artifact and change a setting to prove the sidecar works from the installed location.
+4. Artifacts land in `src-tauri/target/release/bundle/{deb,rpm,appimage}/` + `release/*.tar.gz` (gitignored).

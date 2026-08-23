@@ -9,37 +9,34 @@ Conventions actually enforced or established in this codebase, with references. 
 
 ## Non-negotiables
 
-1. **zod schemas are the contract.** Every shape crossing the IPC boundary is a zod schema, currently centralised in `src/lib/schemas.ts`. Target state is domain-scoped schema modules (see *Separation of concerns*). Sidecar responses must be validated with a schema — never trust raw JSON.
-2. **Services never throw.** Functions in `src/lib/services.ts` catch internally and return `null` / `false`, logging via `sidecarLogger`. Only `sidecar.ts` throws typed `AppError`s upward.
+1. **zod schemas are the contract.** Every shape crossing the IPC boundary is a zod schema, centralised per domain in `src/lib/schemas/<domain>.ts` (barrel: `src/lib/schemas/index.ts`). Sidecar responses must be validated with a schema — never trust raw JSON.
+2. **Services never throw.** Functions in `src/lib/services/<domain>.ts` catch internally and return `null` / `false`, logging via `sidecarLogger`. Only `lib/ipc/client.ts` throws typed `AppError`s upward.
 3. **Errors are structured**, not strings: `{code, message, details}` end-to-end (Go `AppError` → Rust → TS `AppError`). Add new codes in `sidecar/main.go` and match them in the UI.
 4. **Rust stays thin.** No business logic in `src-tauri/src/lib.rs` — it is one command that pipes JSON. New system capabilities belong in the Go sidecar.
-5. **State changes go through write-atoms.** Persistence (`writeSettings`) + side-effect triggering are wired into atoms — per domain module (e.g. `displayAtoms.ts`), with the settings core in `src/lib/atoms.ts`; components never call services to save.
+5. **State changes go through write-atoms.** Persistence (`writeSettings`) + side-effect triggering are wired into atoms — one module per domain in `src/stores/`; components never call services to save.
+6. **No inline SVGs.** Never paste `<svg>` markup into TSX or generate it ad hoc. Icons come from reusable components: prefer `lucide-react`; custom glyphs live in `src/components/icons/` as typed components accepting `size`/`className`. Standalone SVG *files* under `assets/` are build inputs only (e.g. `npx tauri icon assets/icon.svg`), never imported into app code.
 
 ## Layer rules
 
 | Layer | May import from | Must not |
 |-------|-----------------|----------|
-| `pages/`, `components/` | `stores/*`, `lib/atoms`, `lib/services`, UI libs | call `@tauri-apps/api` directly |
-| `lib/services.ts` | `lib/sidecar`, `lib/schemas` | touch jotai atoms |
-| `lib/sidecar.ts` | `@tauri-apps/api/core`, schemas | know about specific commands' semantics |
+| `pages/`, `components/` | `@/stores` (all state), `@/lib/services` (read-only calls), UI libs | call `@tauri-apps/api` directly |
+| `lib/services/<domain>.ts` | `lib/ipc`, `lib/schemas`, `lib/logger` | touch jotai atoms |
+| `lib/ipc/client.ts` | `@tauri-apps/api/core`, schemas | know about specific commands' semantics |
+| `stores/<domain>.ts` | `lib/services`, `lib/schemas` | touch the DOM outside theme application |
 | `src-tauri` | – | grow new commands without a strong reason |
 
-## Separation of concerns (known debt — stay conscious of it)
+## Separation of concerns
 
-The codebase **started monolithic and is migrating domain-by-domain**. Be deliberate about which side of the migration your change lands on:
+The 2026-08-23 restructure paid off the original monolith debt: state lives domain-scoped in `src/stores/`, services in `src/lib/services/`, transport in `src/lib/ipc/`, schemas in `src/lib/schemas/`. Keep new code inside those boundaries — do not reintroduce flat god-files.
 
-**Current debt (do not grow it):**
-
-- `src/lib/atoms.ts` (~370 lines) mixes unrelated domains in one file: settings core + appearance + wallpaper + icons + display + sound write-atoms + the `triggerSideEffects` dispatcher.
-- `src/lib/schemas.ts` concentrates every zod contract (settings sections, wallpaper info, audio devices, keybindings, pywal theme) with their types riding along.
-
-**Established target pattern** — domain-scoped modules, already proven by `displayAtoms.ts`, `audioAtoms.ts`, `themeAtoms.ts`, and `stores/keybindingAtoms.ts`:
-
-- One module per domain owning that slice's atoms: defaults, read atoms, write atoms. Side-effect dispatch stays with the domain or moves to a dedicated `sideEffects.ts`.
-- Schemas/types live beside their domain (`lib/schemas/<domain>.ts` or `<domain>Schemas.ts`), exported next to the code that consumes them.
+- One module per domain owning that slice's atoms: defaults, read atoms, write atoms. Side-effect dispatch stays with the domain or moves to a dedicated module.
+- Schemas/types live beside their domain (`lib/schemas/<domain>.ts`), re-exported through `lib/schemas/index.ts`.
 - Pages/components never reach past a domain module into a shared grab-bag.
 
-**Rule going forward:** new domains always get their own modules; when touching any part of `atoms.ts`/`schemas.ts` for an unrelated reason, migrate that part out instead of growing the file. Track the full split in [[07 Roadmap]] (P1).
+**Rule going forward:** new domains always get their own modules in `stores/`, `lib/services/`, and `lib/schemas/`; never grow a domain file into a grab-bag.
+
+**Tests:** colocated under per-concern `__tests__/` directories (`stores/__tests__/`, `lib/__tests__/`, `lib/schemas/__tests__/`), not beside sources.
 
 ## Formatting
 

@@ -30,3 +30,6 @@ docs/.obsidian/
 *.local
 .DS_Store
 Thumbs.db
+
+# release artifacts
+release/
