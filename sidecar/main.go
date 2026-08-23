@@ -32,6 +32,7 @@ var registry = map[string]protocol.Handler{
 	"read_keybindings":     niri.HandleReadKeybindings,
 	"write_keybinding":     niri.HandleWriteKeybinding,
 	"apply_display_layout": niri.HandleApplyDisplayLayout,
+	"set_niri_cursor":      niri.HandleSetCursor,
 	// system
 	"exec_script":         system.HandleExecScript,
 	"reload_quickshell":   system.HandleReloadQuickshell,

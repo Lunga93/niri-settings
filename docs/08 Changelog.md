@@ -8,6 +8,18 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Cursor control is real; quickshell Icons page deprecated
+
+**Symptom:** Icon/cursor changes wrote gsettings correctly (verified: `Cosmic`/`Pop` in both `~/.config/dotfiles/settings.json` and gsettings) yet nothing visibly changed. Root causes: no xsettings daemon on niri ⇒ running GTK apps never repaint; the quickshell bar renders hardcoded text glyphs and ignores icon themes entirely; niri's `config.kdl` had no `cursor` block so cursor-theme barely reached anything; and a second competing UI — quickshell's own IconsPage with hardcoded presets (Tela/WhiteSur/Numix…) — could stomp values written by this app.
+
+**Fixes:**
+- **Sidecar `set_niri_cursor`:** patches the top-level `cursor { }` block of the niri config (`sidecar/niri/cursor.go`; brace-counted block scan, commented-out blocks ignored, missing keys inserted, block appended when absent), writes `~/.config/environment.d/50-niri-cursor.conf` (`XCURSOR_THEME`/`XCURSOR_SIZE`) for future sessions, then hot-reloads niri. Five hermetic tests cover append/replace/insert/comment+nesting/invalid args.
+- **Cursor atoms** (`stores/settings.ts`) now apply through one `applyCursor()` helper: gsettings (GTK apps) **and** niri config, on theme change, size change, and backup restore alike.
+- **quickshell Icons page deprecated:** sidebar entry and `pageSources` mapping removed (index-mapped lists stay aligned); `IconsPage.qml` replaced by an inert stub that only offers an "Open Niri Settings" launcher — it reads/writes nothing.
+- **Icons page hints:** captions state where each change takes effect (newly opened apps for icons; niri immediately for cursors).
+
+**Regression hints:** Cursor not applying ⇒ check `cursor { }` in `~/.config/niri/config.kdl` and `environment.d/50-niri-cursor.conf`; sidecar tests in `niri/cursor_test.go`. Wrong quickshell page opening ⇒ `Categories.qml` order must match `SettingsContent.qml` `pageSources` order.
+
 ## 2026-08-23 — Theme switching feels instant; Icons page actually works
 
 **Symptom:** Toggling light mode left the app dark until restart ("feels broken"); a `sleep 0.5` hack raced settings.json; the Appearance "Live Theme Preview" was a static mockup saying nothing; the Icons page offered hardcoded theme lists (Tela/Colloid/WhiteSur/Numix…) mostly **not installed**, silently fired-and-forgot gsettings calls, and selecting a missing theme blanked system icons to placeholders with no way back.

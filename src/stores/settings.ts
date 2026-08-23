@@ -2,7 +2,7 @@ import { atom } from "jotai";
 import type { Getter, Setter, WritableAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SettingsDataSchema, type SettingsData, type SoundSettings } from "@/lib/schemas";
-import { writeSettings, readSettings, setGSetting } from "@/lib/services";
+import { writeSettings, readSettings, setGSetting, setNiriCursor } from "@/lib/services";
 import { execScript } from "@/lib/ipc";
 import { logger, sidecarLogger } from "@/lib/logger";
 
@@ -158,6 +158,15 @@ const applyGSetting = async (schema: string, key: string, value: string): Promis
   return ok;
 };
 
+// Cursors need both the gsettings key (GTK apps) and niri's config block
+// (compositor + future sessions via environment.d) to take full effect.
+const applyCursor = async (theme: string, size: number): Promise<void> => {
+  await applyGSetting("org.gnome.desktop.interface", "cursor-theme", theme);
+  await applyGSetting("org.gnome.desktop.interface", "cursor-size", String(size));
+  const ok = await setNiriCursor(theme, size);
+  if (!ok) logger.warn(`niri cursor apply failed: ${theme} ${size}`);
+};
+
 export const setIconThemeAtom = atom(null, (get, set, theme: string) => {
   const current = get(settingsAtom).icons.icon_theme;
   const backup = get(iconsBackupAtom);
@@ -187,9 +196,7 @@ export const setCursorThemeAtom = atom(null, (get, set, theme: string) => {
     set,
     (prev) => ({ ...prev, icons: { ...prev.icons, cursor_theme: theme } }),
     () => {
-      void applyGSetting("org.gnome.desktop.interface", "cursor-theme", theme).then((ok) =>
-        set(gsettingErrorAtom, ok ? null : `Failed to apply cursor theme "${theme}"`),
-      );
+      void applyCursor(theme, get(settingsAtom).icons.cursor_size);
     },
   );
 });
@@ -200,7 +207,7 @@ export const setCursorSizeAtom = atom(null, (get, set, size: number) => {
     set,
     (prev) => ({ ...prev, icons: { ...prev.icons, cursor_size: size } }),
     () => {
-      void applyGSetting("org.gnome.desktop.interface", "cursor-size", String(size));
+      void applyCursor(get(settingsAtom).icons.cursor_theme, size);
     },
   );
 });
@@ -225,7 +232,7 @@ export const restoreIconsBackupAtom = atom(null, (get, set) => {
         void applyGSetting("org.gnome.desktop.interface", "icon-theme", backup.icon_theme);
       }
       if (backup.cursor_theme) {
-        void applyGSetting("org.gnome.desktop.interface", "cursor-theme", backup.cursor_theme);
+        void applyCursor(backup.cursor_theme, get(settingsAtom).icons.cursor_size);
       }
       set(iconsBackupAtom, {});
       set(gsettingErrorAtom, null);

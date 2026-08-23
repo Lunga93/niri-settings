@@ -28,6 +28,18 @@ export const setGSetting = async (schema: string, key: string, value: string): P
   }
 };
 
+// Patches niri's `cursor { }` config block plus the session environment file,
+// then hot-reloads the compositor. Complements set_gsetting for cursors.
+export const setNiriCursor = async (theme: string, size: number): Promise<boolean> => {
+  try {
+    await invokeRaw("set_niri_cursor", { theme, size });
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to set niri cursor", err);
+    return false;
+  }
+};
+
 export const readFile = async (path: string): Promise<string | null> => {
   try {
     const raw = await invokeRaw("read_file", { path });

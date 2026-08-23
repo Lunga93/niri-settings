@@ -134,6 +134,31 @@ func HandleWriteKeybinding(args map[string]any) {
 	protocol.WriteResponse(map[string]string{"status": "ok"})
 }
 
+// HandleSetCursor patches the niri config cursor block (and the session
+// environment file) with the requested theme/size, then hot-reloads niri.
+func HandleSetCursor(args map[string]any) {
+	theme, ok := protocol.GetStringArg(args, "theme")
+	if !ok || theme == "" {
+		protocol.InvalidArgs("Missing 'theme' argument")
+		return
+	}
+	size, ok := protocol.GetIntArg(args, "size")
+	if !ok || size <= 0 {
+		protocol.InvalidArgs("Missing or invalid 'size' argument")
+		return
+	}
+
+	if err := SetCursor(theme, size); err != nil {
+		protocol.WriteError("CURSOR_WRITE_ERROR", err.Error(), nil)
+		return
+	}
+
+	// Apply live; a failure here is non-fatal since the config is persisted.
+	_ = ReloadConfig()
+
+	protocol.WriteResponse(map[string]string{"status": "ok"})
+}
+
 // HandleApplyDisplayLayout applies position/size/transform to outputs.
 func HandleApplyDisplayLayout(args map[string]any) {
 	rawDisplays, ok := args["displays"]

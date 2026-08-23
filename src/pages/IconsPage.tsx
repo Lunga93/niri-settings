@@ -179,6 +179,9 @@ const IconsPage = (): React.JSX.Element => {
               selectedId={icons.icon_theme}
               onSelect={setIconTheme}
             />
+            <div className="px-4 py-2.5 text-[11px] text-text-subtitle">
+              Applies to newly opened apps — running apps pick up the theme when relaunched.
+            </div>
           </SettingsGroup>
 
           {/* ── CURSOR THEME & SIZE SECTION ── */}
@@ -215,6 +218,9 @@ const IconsPage = (): React.JSX.Element => {
                 ))}
               </div>
             </SettingsRow>
+            <div className="px-4 py-2.5 text-[11px] text-text-subtitle">
+              Cursor changes apply to niri immediately and to newly opened apps.
+            </div>
           </SettingsGroup>
         </div>
       </motion.div>
