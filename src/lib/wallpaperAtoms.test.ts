@@ -20,8 +20,10 @@ import {
   galleryVisibleCountAtom,
   thumbStatusAtom,
   markThumbStatusAtom,
+  fetchNewWallpaperAtom,
 } from "./wallpaperAtoms";
 import * as services from "./services";
+import { execScript } from "./sidecar";
 
 vi.mock("./services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
@@ -242,5 +244,27 @@ describe("wallpaperAtoms", () => {
     store.set(markThumbStatusAtom, { src: "asset://broken.jpg", status: "error" });
     expect(store.get(thumbStatusAtom)["asset://broken.jpg"]).toBe("error");
     expect(store.get(thumbStatusAtom)["asset://thumb.jpg"]).toBe("loaded");
+  });
+
+  it("fetchNewWallpaperAtom refreshes info and busts image caches on success", async () => {
+    vi.mocked(services.ensureWallpaperThumbs).mockResolvedValue({ generated: 0, total: 2 });
+    const versionBefore = store.get(wallpaperThumbsVersionAtom);
+
+    const success = await store.set(fetchNewWallpaperAtom);
+    expect(success).toBe(true);
+    expect(execScript).toHaveBeenCalledWith("~/.local/bin/fetch-wallpaper");
+    // Even when ensure generated nothing (same-path in-place overwrite), the
+    // version must advance so unchanged URLs reload fresh bytes.
+    expect(store.get(wallpaperThumbsVersionAtom)).toBe(versionBefore + 1);
+    expect(store.get(wallpaperInfoLoadingAtom)).toBe(false);
+  });
+
+  it("fetchNewWallpaperAtom returns false and keeps version when the script fails", async () => {
+    const versionBefore = store.get(wallpaperThumbsVersionAtom);
+    vi.mocked(execScript).mockRejectedValueOnce(new Error("script failed"));
+
+    const success = await store.set(fetchNewWallpaperAtom);
+    expect(success).toBe(false);
+    expect(store.get(wallpaperThumbsVersionAtom)).toBe(versionBefore);
   });
 });

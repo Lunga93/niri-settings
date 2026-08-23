@@ -8,6 +8,21 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — "Fetch new wallpaper now" left the settings app stale
+
+**Symptom:** The Fetch-now button changed the desktop wallpaper, terminal colors, everything external — but the settings app kept showing the old wallpaper in its hero preview (and old theme accents). Selecting a wallpaper from the gallery updated the app correctly.
+
+**Root cause:** `fetch-wallpaper` overwrites `daily.jpg` **in place**, so `current_wallpaper` keeps the identical path string. The hero `<img src={resolveWallpaperUrl(current_wallpaper)}>` therefore had a byte-identical URL before and after the fetch, and the webview served its cached copy — same class of stale-cache bug as the invisible thumbnails. Two further gaps versus `applyWallpaperAtom`: fetch-now never re-read pywal colors into app state, and never busted any image caches.
+
+**Fix:**
+- New `fetchNewWallpaperAtom` in `src/lib/wallpaperAtoms.ts` owns the whole sequence: run script → `refreshWallpaperInfoAtom` → unconditional `wallpaperThumbsVersionAtom` bump (files provably changed on disk) → `getThemeColors` + `pywalThemeAtom` + `applyThemeToDOM`, mirroring manual selection.
+- Hero preview URL is versioned with `?v=<thumbsVersion>` like gallery thumbs, so bumped versions reload fresh bytes.
+- `WallpaperPage.handleFetchNow` reduced to calling the atom.
+
+**Verification:** typecheck ✓, 113 vitest tests ✓ (new: fetch success bumps version even when ensure generates nothing; script failure returns false without bumping), eslint ✓.
+
+**Regression hints:** App preview stale again ⇒ check that whatever triggers the change also bumps `wallpaperThumbsVersionAtom` or changes the URL. Any new out-of-band wallpaper mutation must go through an atom that refreshes info + theme + cache version together.
+
 ## 2026-08-23 — Rotated display renders landscape in arrangement canvas
 
 **Symptom:** On the Display page, a portrait monitor rotated 90° (DP-1, Dell P2422H) drew its canvas box wider than tall — the "vertical display" appeared horizontal despite the inspector showing 1080x1920 logical size and the 90° badge.

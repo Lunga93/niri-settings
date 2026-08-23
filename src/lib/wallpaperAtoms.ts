@@ -161,6 +161,36 @@ export const selectWallpaperAtom = atom(null, (_get, set, path: string | null) =
   set(selectedWallpaperPathAtom, path);
 });
 
+/**
+ * Runs the external fetch-wallpaper script and syncs every piece of app state
+ * the script changes out-of-band. The script overwrites daily.jpg in place, so
+ * current_wallpaper's path string is unchanged afterwards; without a forced
+ * thumbs-version bump the webview would keep serving cached copies of the old
+ * bytes under identical URLs. Theme is re-read for the same reason manual
+ * selection refreshes it.
+ */
+export const fetchNewWallpaperAtom = atom(null, async (get, set): Promise<boolean> => {
+  try {
+    await execScript("~/.local/bin/fetch-wallpaper");
+  } catch (err) {
+    logger.error("Failed to fetch wallpaper", err);
+    return false;
+  }
+  await set(refreshWallpaperInfoAtom);
+  // Files were replaced on disk under unchanged paths: bust image caches.
+  set(wallpaperThumbsVersionAtom, (v) => v + 1);
+  try {
+    const themeData = await getThemeColors();
+    if (themeData) {
+      set(pywalThemeAtom, themeData);
+      applyThemeToDOM(themeData, get(appearanceAtom));
+    }
+  } catch (err) {
+    logger.error("Failed to refresh theme after wallpaper fetch", err);
+  }
+  return true;
+});
+
 export const applyWallpaperAtom = atom(
   null,
   async (get, set, wallpaperPath: string): Promise<boolean> => {

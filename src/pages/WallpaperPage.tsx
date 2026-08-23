@@ -34,10 +34,10 @@ import {
   galleryVisibleCountAtom,
   thumbStatusAtom,
   markThumbStatusAtom,
+  fetchNewWallpaperAtom,
 } from "@/lib/wallpaperAtoms";
 import type { WallpaperItem } from "@/lib/schemas/wallpaper";
 import { execScript } from "@/lib/sidecar";
-import { logger } from "@/lib/logger";
 
 interface MoodConfig {
   readonly id: string;
@@ -295,6 +295,7 @@ const WallpaperPage = (): React.JSX.Element => {
   const setMood = useSetAtom(setWallpaperMoodAtom);
   const toggleSource = useSetAtom(toggleWallpaperSourceAtom);
   const applyWallpaper = useSetAtom(applyWallpaperAtom);
+  const fetchNewWallpaper = useSetAtom(fetchNewWallpaperAtom);
 
   const [fetching, setFetching] = useState(false);
   const [targetApplyingPath, setTargetApplyingPath] = useState<string | null>(null);
@@ -344,14 +345,11 @@ const WallpaperPage = (): React.JSX.Element => {
   const handleFetchNow = useCallback(async (): Promise<void> => {
     setFetching(true);
     try {
-      await execScript("~/.local/bin/fetch-wallpaper");
-      await refreshInfo();
-    } catch (err) {
-      logger.error("Failed to fetch wallpaper", err);
+      await fetchNewWallpaper();
     } finally {
       setFetching(false);
     }
-  }, [refreshInfo]);
+  }, [fetchNewWallpaper]);
 
   const handleApplyWallpaper = useCallback(
     async (item: WallpaperItem): Promise<void> => {
@@ -417,21 +415,29 @@ const WallpaperPage = (): React.JSX.Element => {
 
           {/* Preview Image / Fallback Container */}
           <div className="relative w-full min-h-60 rounded-xl overflow-hidden border border-border/60 bg-surface-active/50 flex items-center justify-center">
-            {resolveWallpaperUrl(info.current_wallpaper) ? (
-              <img
-                src={resolveWallpaperUrl(info.current_wallpaper)}
-                alt="Current Wallpaper"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-text-muted">
-                <Layers size={28} className="opacity-40" />
-                <span className="text-[12px]">
-                  {loadingInfo ? "Loading preview..." : "No wallpaper preview"}
-                </span>
-              </div>
-            )}
+            {(() => {
+              // fetch-wallpaper overwrites daily.jpg in place, so the URL is
+              // unchanged after a fetch; version it like gallery thumbs so the
+              // webview reloads instead of serving cached bytes.
+              const heroBase = resolveWallpaperUrl(info.current_wallpaper);
+              const heroUrl =
+                heroBase && thumbsVersion > 0 ? `${heroBase}?v=${thumbsVersion}` : heroBase;
+              return heroUrl ? (
+                <img
+                  src={heroUrl}
+                  alt="Current Wallpaper"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-text-muted">
+                  <Layers size={28} className="opacity-40" />
+                  <span className="text-[12px]">
+                    {loadingInfo ? "Loading preview..." : "No wallpaper preview"}
+                  </span>
+                </div>
+              );
+            })()}
             <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
             {/* Wallpaper Count Badge */}
