@@ -43,3 +43,19 @@ export type BackupInfo = z.infer<typeof BackupInfoSchema>;
 export const BackupsPayloadSchema = z.object({ backups: z.array(BackupInfoSchema) });
 
 export const RestorePayloadSchema = z.object({ restored: z.number() });
+
+export const UpdateInfoSchema = z.object({
+  available: z.boolean(),
+  version: z.string().optional(),
+  url: z.string().optional(),
+  notes: z.string().optional(),
+});
+export type UpdateInfo = z.infer<typeof UpdateInfoSchema>;
+
+export const UpdateProgressSchema = z.object({
+  status: z.string(),
+  percent: z.number().optional(),
+  message: z.string().optional(),
+  path: z.string().optional(),
+});
+export type UpdateProgress = z.infer<typeof UpdateProgressSchema>;

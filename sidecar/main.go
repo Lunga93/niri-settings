@@ -65,6 +65,10 @@ var registry = map[string]protocol.Handler{
 	"adopt_tier2":             setup.HandleAdoptTier2,
 	"list_tier2_backups":      setup.HandleListTier2Backups,
 	"restore_tier2_backup":    setup.HandleRestoreTier2Backup,
+	"check_for_update":        setup.HandleCheckForUpdate,
+	"download_update":         setup.HandleDownloadUpdate,
+	"apply_update":            setup.HandleApplyUpdate,
+	"pending_update":          setup.HandlePendingUpdate,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,

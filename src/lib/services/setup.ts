@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { callSidecar } from "../ipc";
 import {
   InstallHelpersResponseSchema,
@@ -5,10 +6,14 @@ import {
   Tier2AdoptPayloadSchema,
   BackupsPayloadSchema,
   RestorePayloadSchema,
+  UpdateInfoSchema,
+  UpdateProgressSchema,
   type TierStatus,
   type AdoptResult,
   type BackupInfo,
   type InstallHelpersResponse,
+  type UpdateInfo,
+  type UpdateProgress,
 } from "../schemas";
 
 export const installHelperScripts = async (): Promise<InstallHelpersResponse | null> =>
@@ -33,3 +38,19 @@ export const restoreTier2Backup = async (id: string): Promise<number | null> => 
   const payload = await callSidecar("restore_tier2_backup", RestorePayloadSchema, { id });
   return payload?.restored ?? null;
 };
+
+export const checkForUpdate = async (): Promise<UpdateInfo | null> =>
+  callSidecar("check_for_update", UpdateInfoSchema, {});
+
+export const downloadUpdate = async (url: string): Promise<UpdateProgress | null> =>
+  callSidecar("download_update", UpdateProgressSchema, { url });
+
+export const applyUpdate = async (path: string): Promise<UpdateProgress | null> =>
+  callSidecar("apply_update", UpdateProgressSchema, { path });
+
+export const pendingUpdate = async (): Promise<{ pending: boolean; message?: string } | null> =>
+  callSidecar(
+    "pending_update",
+    z.object({ pending: z.boolean(), message: z.string().optional() }),
+    {},
+  );

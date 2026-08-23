@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { motion } from "framer-motion";
-import { Wand2, Check, CircleAlert, Loader2 } from "lucide-react";
+import { Wand2, Check, CircleAlert, Loader2, Download, RefreshCw } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import {
   capabilitiesAtom,
@@ -9,8 +9,16 @@ import {
   tierStatusAtom,
   tierBackupsAtom,
   loadTierStatusAtom,
+  updateInfoAtom,
+  checkUpdateAtom,
 } from "@/stores";
-import { installHelperScripts, adoptTier2, restoreTier2Backup } from "@/lib/services";
+import {
+  installHelperScripts,
+  adoptTier2,
+  restoreTier2Backup,
+  downloadUpdate,
+  applyUpdate,
+} from "@/lib/services";
 import type { HelperScriptResult } from "@/lib/schemas";
 
 // --- Tier 1 helpers ---
@@ -316,6 +324,74 @@ const Tier2Content = ({
   </>
 );
 
+// --- Update Banner ---
+
+const UpdateBanner = (): React.JSX.Element | null => {
+  const info = useAtomValue(updateInfoAtom);
+  const checkUpdate = useSetAtom(checkUpdateAtom);
+  const [downloading, setDownloading] = useState(false);
+  const [applied, setApplied] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void checkUpdate();
+  }, [checkUpdate]);
+
+  if (!info?.available) return null;
+
+  const handleDownload = async (): Promise<void> => {
+    setDownloading(true);
+    setError("");
+    try {
+      const result = await downloadUpdate(info.url!);
+      if (!result || result.status === "error") {
+        setError(result?.message ?? "Download failed.");
+        return;
+      }
+      const applied_ = await applyUpdate(result.path!);
+      if (applied_?.status === "ready") {
+        setApplied(true);
+      } else {
+        setError(applied_?.message ?? "Apply failed.");
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-accent bg-accent-soft p-4 flex items-center gap-3"
+    >
+      <RefreshCw size={16} className="text-accent shrink-0" />
+      <div className="flex-1">
+        <p className="text-[12px] font-semibold text-text-header">
+          Update available: v{info.version}
+        </p>
+        <p className="text-[11px] text-text-subtitle mt-0.5">
+          Part of the Manatee Desktop experience — download and restart to update.
+        </p>
+      </div>
+      {applied ? (
+        <span className="text-[11px] font-semibold text-success">Ready — restart to apply</span>
+      ) : (
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50 cursor-pointer"
+          style={{ background: "var(--gradient-accent)", boxShadow: "var(--shadow-glow)" }}
+        >
+          {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+          {downloading ? "Downloading…" : "Update now"}
+        </button>
+      )}
+      {error && <p className="text-[11px] text-danger mt-1">{error}</p>}
+    </motion.div>
+  );
+};
+
 // --- Main SetupPage ---
 
 const SetupPage = (): React.JSX.Element => {
@@ -401,6 +477,7 @@ const SetupPage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7">
+          <UpdateBanner />
           <SettingsGroup header="Setup Progress" accent="var(--color-accent)">
             <div className="p-4 flex flex-col gap-5">
               <Stepper currentTier={tier} />
