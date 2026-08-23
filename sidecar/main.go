@@ -14,6 +14,7 @@ import (
 	"niri-settings-sidecar/niri"
 	"niri-settings-sidecar/protocol"
 	"niri-settings-sidecar/settings"
+	"niri-settings-sidecar/startup"
 	"niri-settings-sidecar/system"
 	"niri-settings-sidecar/theme"
 	"niri-settings-sidecar/wallpaper"
@@ -48,6 +49,12 @@ var registry = map[string]protocol.Handler{
 	"get_capabilities": system.HandleGetCapabilities,
 
 	"get_network_status": system.HandleGetNetworkStatus,
+
+	"list_startup_apps":       startup.HandleListStartupApps,
+	"upsert_startup_app":      startup.HandleUpsertStartupApp,
+	"set_startup_app_enabled": startup.HandleSetStartupAppEnabled,
+	"delete_startup_app":      startup.HandleDeleteStartupApp,
+	"ensure_autostart_runner": startup.HandleEnsureAutostartRunner,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,
