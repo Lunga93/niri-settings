@@ -1,4 +1,4 @@
-import { invokeRaw } from "../ipc";
+import { callSidecar, invokeRaw } from "../ipc";
 import { sidecarLogger } from "../logger";
 import {
   InstalledAppsPayloadSchema,
@@ -8,33 +8,13 @@ import {
 } from "../schemas";
 
 export const listInstalledApps = async (): Promise<DesktopApp[]> => {
-  try {
-    const raw = await invokeRaw("list_installed_apps", {});
-    const parsed = InstalledAppsPayloadSchema.safeParse(raw);
-    if (!parsed.success) {
-      sidecarLogger.error("list_installed_apps: unexpected payload", parsed.error);
-      return [];
-    }
-    return parsed.data.apps;
-  } catch (err) {
-    sidecarLogger.error("Failed to list installed apps", err);
-    return [];
-  }
+  const payload = await callSidecar("list_installed_apps", InstalledAppsPayloadSchema, {});
+  return payload?.apps ?? [];
 };
 
 export const listDefaultApps = async (): Promise<DefaultGroup[]> => {
-  try {
-    const raw = await invokeRaw("list_default_apps", {});
-    const parsed = DefaultAppsPayloadSchema.safeParse(raw);
-    if (!parsed.success) {
-      sidecarLogger.error("list_default_apps: unexpected payload", parsed.error);
-      return [];
-    }
-    return parsed.data.groups;
-  } catch (err) {
-    sidecarLogger.error("Failed to list default apps", err);
-    return [];
-  }
+  const payload = await callSidecar("list_default_apps", DefaultAppsPayloadSchema, {});
+  return payload?.groups ?? [];
 };
 
 export const setDefaultApp = async (group: string, desktopId: string): Promise<boolean> => {

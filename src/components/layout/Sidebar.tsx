@@ -11,6 +11,7 @@ import {
   Wifi,
   Volume2,
   Info,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { activePageAtom, SIDEBAR_SECTIONS, type PageId } from "@/stores";
@@ -27,6 +28,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   wifi: Wifi,
   "volume-2": Volume2,
   info: Info,
+  sparkles: Sparkles,
 };
 
 interface SidebarItemProps {

@@ -147,13 +147,7 @@ func installScripts(home string) ([]installResult, error) {
 	return results, nil
 }
 
-// HandleInstallHelperScripts writes the bundled Tier 1 scripts to the
-// user's helper directory, never overwriting foreign versions.
-func HandleInstallHelperScripts(_ map[string]any) {
-	home := protocol.HomeDir("HOME_ERROR")
-	if home == "" {
-		return
-	}
+func handleInstallHelperScripts(home string, _ map[string]any) {
 	results, err := installScripts(home)
 	if err != nil {
 		protocol.WriteError("SETUP_ERROR", err.Error(), nil)
@@ -172,3 +166,7 @@ func HandleInstallHelperScripts(_ map[string]any) {
 		"results": payloadResults,
 	})
 }
+
+// HandleInstallHelperScripts writes the bundled Tier 1 scripts to the
+// user's helper directory, never overwriting foreign versions.
+var HandleInstallHelperScripts = protocol.WithHome(handleInstallHelperScripts)

@@ -1,9 +1,11 @@
 import { atom } from "jotai";
 
 export type PageId =
+  | "setup"
   | "wallpaper"
   | "appearance"
   | "icons"
+  | "defaults"
   | "display"
   | "keybindings"
   | "startup"
@@ -26,9 +28,11 @@ export const SIDEBAR_SECTIONS: readonly SidebarSection[] = [
   {
     section: "Personalization",
     items: [
+      { id: "setup", label: "Get Started", icon: "sparkles" },
       { id: "wallpaper", label: "Wallpaper", icon: "image" },
       { id: "appearance", label: "Appearance", icon: "palette" },
       { id: "icons", label: "Icons", icon: "shapes" },
+      { id: "defaults", label: "Default Apps", icon: "app-window" },
     ],
   },
   {

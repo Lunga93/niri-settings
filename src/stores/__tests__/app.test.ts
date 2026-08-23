@@ -15,6 +15,7 @@ describe("activePageAtom", () => {
 
   it("can be set to any valid page", () => {
     const pages: PageId[] = [
+      "setup",
       "wallpaper",
       "appearance",
       "icons",
@@ -50,9 +51,9 @@ describe("SIDEBAR_SECTIONS", () => {
     expect(SIDEBAR_SECTIONS[2].section).toBe("About");
   });
 
-  it("Personalization has wallpaper, appearance, icons, defaults", () => {
+  it("Personalization has setup, wallpaper, appearance, icons, defaults", () => {
     const ids = SIDEBAR_SECTIONS[0].items.map((i) => i.id);
-    expect(ids).toEqual(["wallpaper", "appearance", "icons", "defaults"]);
+    expect(ids).toEqual(["setup", "wallpaper", "appearance", "icons", "defaults"]);
   });
 
   it("System has display, keybindings, startup, network, sound", () => {

@@ -98,3 +98,16 @@ func HomeDir(errCode string) string {
 	}
 	return home
 }
+
+// WithHome wraps a handler function that needs the user's home directory.
+// It resolves HOME once, calls fn only if successful, and silently
+// returns (after writing an error) if home cannot be determined.
+func WithHome(fn func(home string, args map[string]any)) Handler {
+	return func(args map[string]any) {
+		home := HomeDir("HOME_ERROR")
+		if home == "" {
+			return
+		}
+		fn(home, args)
+	}
+}

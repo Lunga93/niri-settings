@@ -1,130 +1,8 @@
-import React, { useState } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import React from "react";
 import { motion } from "framer-motion";
-import {
-  Layers,
-  Cpu,
-  Monitor,
-  HardDrive,
-  Terminal,
-  Sparkles,
-  Wand2,
-  Check,
-  CircleAlert,
-  Loader2,
-} from "lucide-react";
+import { Layers, Cpu, Monitor, HardDrive, Terminal, Sparkles } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
-import { capabilitiesAtom, loadCapabilitiesAtom } from "@/stores";
-import { installHelperScripts } from "@/lib/services";
-import { type HelperScriptResult } from "@/lib/schemas";
-
-type HelperKey = "apply_theme" | "apply_display_scale" | "night_light";
-
-const HELPER_KEYS: readonly HelperKey[] = ["apply_theme", "apply_display_scale", "night_light"];
-
-const HELPER_LABELS: Record<HelperKey, string> = {
-  apply_theme: "Theme pipeline",
-  apply_display_scale: "Display scaling",
-  night_light: "Night light",
-};
-
-const SetupSection = (): React.JSX.Element => {
-  const caps = useAtomValue(capabilitiesAtom);
-  const reloadCaps = useSetAtom(loadCapabilitiesAtom);
-  const [installing, setInstalling] = useState(false);
-  const [results, setResults] = useState<HelperScriptResult[]>([]);
-
-  const missing = HELPER_KEYS.filter((key) => !caps[key]);
-
-  const handleInstall = async (): Promise<void> => {
-    setInstalling(true);
-    try {
-      const result = await installHelperScripts();
-      if (result) {
-        setResults(result.results);
-        await reloadCaps();
-      }
-    } finally {
-      setInstalling(false);
-    }
-  };
-
-  return (
-    <SettingsGroup header="Tier 1 — Appearance Helpers" accent="#30d158">
-      <div className="p-4 flex flex-col gap-3">
-        <p className="text-[12px] leading-relaxed text-text-body">
-          Helper scripts power theming, display scaling, and night light on bare setups. One click
-          installs them into your local bin directory — no terminal work, no environment variables.
-          Existing custom versions are never overwritten.
-        </p>
-
-        <div className="flex flex-col gap-2">
-          {HELPER_KEYS.map((key) => {
-            const present = Boolean(caps[key]);
-            return (
-              <div key={key} className="flex items-center gap-2.5 text-[12px]">
-                {present ? (
-                  <Check size={14} className="text-success shrink-0" />
-                ) : (
-                  <CircleAlert size={14} className="text-warn shrink-0" />
-                )}
-                <span className={present ? "text-text-header" : "text-text-subtitle"}>
-                  {HELPER_LABELS[key]}
-                </span>
-                {!present && <span className="text-[11px] text-text-muted ml-auto">not found</span>}
-              </div>
-            );
-          })}
-        </div>
-
-        {missing.length > 0 && (
-          <button
-            onClick={(): void => {
-              void handleInstall();
-            }}
-            disabled={installing}
-            className="self-start flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[11px] font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50 cursor-pointer"
-            style={{ background: "var(--gradient-accent)", boxShadow: "var(--shadow-glow)" }}
-          >
-            {installing ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-            Install helper scripts
-          </button>
-        )}
-
-        {results.length > 0 && (
-          <ul className="text-[11px] text-text-subtitle flex flex-col gap-1">
-            {results.map((r) => (
-              <li key={r.script} className="flex items-center gap-1.5">
-                <Check size={11} className="text-success shrink-0" />
-                <span className="font-mono">{r.script}</span>
-                <span>
-                  {r.status === "kept"
-                    ? "— kept your existing version"
-                    : r.status === "updated"
-                      ? "— updated"
-                      : "— installed"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {!caps.pywal_cache && (
-          <div className="rounded-xl border border-border bg-surface-elevated/60 p-3">
-            <p className="text-[11px] leading-relaxed text-text-subtitle">
-              Optional: install pywal and wlsunset so wallpapers recolor your apps and night light
-              actually shifts color temperature:
-            </p>
-            <code className="block mt-1.5 text-[11px] text-text-body font-mono select-all">
-              sudo pacman -S --needed pywal wlsunset
-            </code>
-          </div>
-        )}
-      </div>
-    </SettingsGroup>
-  );
-};
 
 const INFO_GROUPS = [
   {
@@ -162,8 +40,6 @@ const SysInfoPage = (): React.JSX.Element => (
       </div>
 
       <div className="flex flex-col gap-6 p-7">
-        <SetupSection />
-
         {INFO_GROUPS.map((group) => (
           <SettingsGroup key={group.title} header={group.title} accent={group.accent}>
             {group.items.map((item) => {

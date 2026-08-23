@@ -74,6 +74,24 @@ export const invokeRaw = async (
 };
 
 /**
+ * Safe wrapper around invokeSidecar: validates the response via schema,
+ * catches both IPC and schema-validation errors, and returns null on failure.
+ * Use this instead of invokeRaw + manual safeParse in service functions.
+ */
+export const callSidecar = async <T>(
+  command: string,
+  schema: ZodSchema<T>,
+  args?: Record<string, unknown>,
+): Promise<T | null> => {
+  try {
+    return await invokeSidecar(command, schema, args);
+  } catch (err) {
+    sidecarLogger.error(`callSidecar "${command}" returned error`, err);
+    return null;
+  }
+};
+
+/**
  * Executes a shell script via the sidecar.
  */
 export const execScript = async (script: string): Promise<void> => {

@@ -9,3 +9,4 @@ export * from "./keybindings";
 export * from "./system";
 export * from "./startup";
 export * from "./apps";
+export * from "./setup";

@@ -61,6 +61,10 @@ var registry = map[string]protocol.Handler{
 	"list_default_apps":       apps.HandleListDefaultApps,
 	"set_default_app":         apps.HandleSetDefaultApp,
 	"install_helper_scripts":  setup.HandleInstallHelperScripts,
+	"get_tier_status":         setup.HandleGetTierStatus,
+	"adopt_tier2":             setup.HandleAdoptTier2,
+	"list_tier2_backups":      setup.HandleListTier2Backups,
+	"restore_tier2_backup":    setup.HandleRestoreTier2Backup,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,

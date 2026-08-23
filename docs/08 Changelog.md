@@ -8,7 +8,29 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
-## 2026-08-23 — One-click Tier 1 setup (no terminal, no env vars)
+## 2026-08-23 — Setup wizard page, service layer cleanup, sidecar middleware
+
+**Setup gets its own page with a progress stepper.** Tier 1 and Tier 2 are no longer scattered sections on System Info — they live in a dedicated **"Get Started"** sidebar entry under Personalization, presented as a three-step wizard (Bare niri → Appearance Helpers → Full Desktop Suite) with visual progress indicators. Tier 2 is grayed out until Tier 1 is complete, making the upgrade path obvious at a glance. System Info returns to being a clean, read-only status dashboard.
+
+**Frontend service layer simplified.** All `invokeRaw` + manual `safeParse` + catch boilerplate replaced with a single `callSidecar<T>(command, schema, args)` helper that wraps the existing `invokeSidecar` with null-on-error semantics. Five service files (`setup`, `apps`, `system`, `theme`, `ipc/client`) touched; net reduction of ~80 lines of repetitive code.
+
+**Sidecar `WithHome` middleware.** The repeated `HomeDir("HOME_ERROR") + early-return` pattern across all handlers replaced with a `protocol.WithHome(fn)` wrapper. Five setup handlers refactored; the middleware is now the standard pattern for any future handler that needs the user's home directory.
+
+**Schema placement corrected.** `HelperScriptResultSchema` and `InstallHelpersResponseSchema` moved from `apps.ts` to `setup.ts` where they belong, keeping each domain's schemas self-contained.
+
+## 2026-08-23 — Tier 2: adopt the full desktop with a safety net
+
+**New "Tier 2 — Full Desktop Suite" card on System Info**, turning the app into a ladder into the DE: Tier 0 (bare niri) → Tier 1 (helper scripts, one click) → Tier 2 (complete dotfiles desktop).
+
+**How adoption works (safe by construction):**
+- **Tier detection**: `get_tier_status` inspects the checkout and resolves stow symlinks — relative *and* absolute — to classify the machine as tier 0/1/2. Already-installed machines show "Full desktop active" and are hard no-ops for the installer path (verified live).
+- **Fail-fast preflight**: if no supported terminal emulator exists (alacritty/kitty/foot/wezterm), adoption refuses before touching anything — because the upstream `install.sh` needs an interactive sudo password, it runs in a visible terminal window, never silently.
+- **Backup before anything else**: every config dir the stow step would replace (12 dirs incl. niri, quickshell) plus settings/current-wallpaper files is copied to `~/.local/share/niri-settings/backups/<timestamp>/` with a JSON manifest; symlinks are recorded but not duplicated.
+- **Preview first**: a dry-run button launches `install.sh -n` in the same kind of terminal window so users can read exactly what would happen. Verified end-to-end on the live desktop.
+- **Restore anytime**: backups list with item counts; one click removes the dotfiles symlinks and puts the user's original configs back (round-trip covered by tests, including the missing-file case).
+
+Sidecar grows 4 commands (`get_tier_status`, `adopt_tier2`, `list_tier2_backups`, `restore_tier2_backup`) and 5 hermetic tests; system paths like the SDDM theme are documented as out of scope for user-level restore.
+
 
 **Problem:** Getting Tier 1 on a bare niri install previously meant cloning the dotfiles repo, hand-copying five scripts, making them executable, and installing pywal/wlsunset — hopeless for non-technical users.
 

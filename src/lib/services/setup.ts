@@ -1,18 +1,35 @@
-import { invokeRaw } from "../ipc";
-import { sidecarLogger } from "../logger";
-import { InstallHelpersResponseSchema, type InstallHelpersResponse } from "../schemas";
+import { callSidecar } from "../ipc";
+import {
+  InstallHelpersResponseSchema,
+  TierStatusPayloadSchema,
+  Tier2AdoptPayloadSchema,
+  BackupsPayloadSchema,
+  RestorePayloadSchema,
+  type TierStatus,
+  type AdoptResult,
+  type BackupInfo,
+  type InstallHelpersResponse,
+} from "../schemas";
 
-export const installHelperScripts = async (): Promise<InstallHelpersResponse | null> => {
-  try {
-    const raw = await invokeRaw("install_helper_scripts", {});
-    const parsed = InstallHelpersResponseSchema.safeParse(raw);
-    if (!parsed.success) {
-      sidecarLogger.error("install_helper_scripts: unexpected payload", parsed.error);
-      return null;
-    }
-    return parsed.data;
-  } catch (err) {
-    sidecarLogger.error("Failed to install helper scripts", err);
-    return null;
-  }
+export const installHelperScripts = async (): Promise<InstallHelpersResponse | null> =>
+  callSidecar("install_helper_scripts", InstallHelpersResponseSchema, {});
+
+export const getTierStatus = async (): Promise<TierStatus | null> => {
+  const payload = await callSidecar("get_tier_status", TierStatusPayloadSchema, {});
+  return payload?.status ?? null;
+};
+
+export const adoptTier2 = async (dryRun: boolean): Promise<AdoptResult | null> => {
+  const payload = await callSidecar("adopt_tier2", Tier2AdoptPayloadSchema, { dry_run: dryRun });
+  return payload?.result ?? null;
+};
+
+export const listTier2Backups = async (): Promise<BackupInfo[]> => {
+  const payload = await callSidecar("list_tier2_backups", BackupsPayloadSchema, {});
+  return payload?.backups ?? [];
+};
+
+export const restoreTier2Backup = async (id: string): Promise<number | null> => {
+  const payload = await callSidecar("restore_tier2_backup", RestorePayloadSchema, { id });
+  return payload?.restored ?? null;
 };
