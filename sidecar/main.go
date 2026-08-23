@@ -35,6 +35,7 @@ var registry = map[string]protocol.Handler{
 	"set_niri_cursor":      niri.HandleSetCursor,
 	// system
 	"exec_script":         system.HandleExecScript,
+	"run_script":          system.HandleRunScript,
 	"reload_quickshell":   system.HandleReloadQuickshell,
 	"set_gsetting":        system.HandleSetGSetting,
 	"read_file":           system.HandleReadFile,

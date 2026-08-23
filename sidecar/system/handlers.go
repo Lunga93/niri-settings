@@ -1,6 +1,7 @@
 package system
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,6 +35,40 @@ func HandleExecScript(args map[string]any) {
 		return
 	}
 	if err := ExecScript(script); err != nil {
+		protocol.WriteError("SCRIPT_ERROR", err.Error(), nil)
+		return
+	}
+	protocol.WriteResponse(map[string]string{"status": "ok"})
+}
+
+// HandleRunScript resolves a named helper script (bin dirs, then $PATH) and
+// executes it with optional string args. Keeps install locations out of the
+// frontend entirely.
+func HandleRunScript(args map[string]any) {
+	name, ok := protocol.GetStringArg(args, "name")
+	if !ok {
+		protocol.InvalidArgs("Missing 'name' argument")
+		return
+	}
+
+	scriptArgs := []string{}
+	if raw, present := args["args"]; present && raw != nil {
+		// JSON round-trip converts []any of strings without type assertions.
+		blob, err := json.Marshal(raw)
+		if err != nil {
+			protocol.InvalidArgs("Invalid 'args' argument")
+			return
+		}
+		var parsed []string
+		if err := json.Unmarshal(blob, &parsed); err != nil {
+			protocol.InvalidArgs("'args' must be an array of strings")
+			return
+		}
+		scriptArgs = parsed
+	}
+
+	home, _ := os.UserHomeDir()
+	if err := RunNamedScript(home, name, scriptArgs); err != nil {
 		protocol.WriteError("SCRIPT_ERROR", err.Error(), nil)
 		return
 	}

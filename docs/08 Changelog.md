@@ -8,6 +8,19 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Portable script discovery; no more hardcoded install paths
+
+**Symptom:** Helper scripts were assumed to live in `~/.local/bin` and the frontend invoked them by absolute path in shell strings (`~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`). On any machine that installs them elsewhere — or only on `$PATH` — capabilities reported false while invocations failed, or vice versa.
+
+**Fixes:**
+- **Sidecar resolver** (`system/scripts.go`): named scripts resolve through `$NIRI_SCRIPT_BIN_DIR` → `$XDG_BIN_HOME` → `~/.local/bin` → `$PATH`. Names containing `/` are rejected.
+- **New `run_script {name, args}` command**: executes a resolved script with string args under the same timeout/process-group guard rails. Args cross the JSON boundary via marshal round-trip (no type assertions).
+- All frontend call sites rewired: apply-theme now receives the wallpaper path from `get_wallpaper_info` (no more shell `cat` of the marker file), and set-wallpaper/fetch-wallpaper/apply-display-scale/night-light all go through `run_script`.
+- Keybindings page shows a notice when niri IPC is absent instead of silently failing.
+- Docs: new [[09 Setup Tiers]] describing what works on bare niri vs helper-scripts-only vs the full dotfiles desktop.
+
+**Regression hints:** Script not found ⇒ check resolution order above and `system/scripts_test.go`; banner wrong ⇒ compare `get_capabilities` output with installed scripts.
+
 ## 2026-08-23 — Night-light freeze, honest light mode, real network status
 
 **Symptoms:** Toggling night light froze every backend feature; clicking Dark/Light left the app black while labels flipped; Network page always claimed ethernet was "Unplugged"; a stale sidecar made the new capability banners lie about missing scripts on first boot.

@@ -1,7 +1,6 @@
 import { atom, type Getter, type Setter } from "jotai";
 import { PywalThemeSchema, type PywalTheme, type AppearanceSettings } from "../lib/schemas";
-import { getThemeColors, writeSettings } from "../lib/services";
-import { execScript } from "../lib/ipc";
+import { getThemeColors, writeSettings, getWallpaperInfo, runScript } from "../lib/services";
 import { logger } from "../lib/logger";
 import { settingsAtom, appearanceAtom } from "./settings";
 
@@ -160,7 +159,14 @@ const mutateAppearance = (
     // The script reads color_scheme/accent overrides from settings.json, so
     // it must only start once the new snapshot is durably on disk.
     await writeSettings(get(settingsAtom));
-    await execScript(`~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`);
+
+    // Regenerate the pywal palette from the current wallpaper. Resolved by
+    // the sidecar; skipped cleanly when no wallpaper or script is present.
+    const info = await getWallpaperInfo();
+    if (info?.current_wallpaper) {
+      const ok = await runScript("apply-theme", [info.current_wallpaper]);
+      if (!ok) logger.warn("apply-theme unavailable; palette not regenerated");
+    }
 
     const fresh = await getThemeColors();
     if (fresh) {

@@ -8,6 +8,7 @@ import {
   setGSetting,
   setNiriCursor,
   setQuickshellIconTheme,
+  runScript,
 } from "@/lib/services";
 import { execScript } from "@/lib/ipc";
 import { logger, sidecarLogger } from "@/lib/logger";
@@ -113,9 +114,7 @@ export const setDisplayScaleAtom = atom(null, (get, set, scale: string) => {
     set,
     (prev) => ({ ...prev, display: { ...prev.display, scale } }),
     () => {
-      execScript("~/.local/bin/apply-display-scale").catch((err) => {
-        logger.warn("Failed to apply display scale", err);
-      });
+      void runScript("apply-display-scale");
     },
   );
 });
@@ -126,9 +125,7 @@ export const setNightLightAtom = atom(null, (get, set, enabled: boolean) => {
     set,
     (prev) => ({ ...prev, display: { ...prev.display, night_light_enabled: enabled } }),
     () => {
-      execScript("~/.local/bin/night-light").catch((err) => {
-        logger.warn("Failed to apply night light", err);
-      });
+      void runScript("night-light");
     },
   );
 });
@@ -139,9 +136,7 @@ export const setNightLightTempAtom = atom(null, (get, set, temp: number) => {
     set,
     (prev) => ({ ...prev, display: { ...prev.display, night_light_temperature: temp } }),
     () => {
-      execScript("~/.local/bin/night-light").catch((err) => {
-        logger.warn("Failed to apply night light", err);
-      });
+      void runScript("night-light");
     },
   );
 });
@@ -295,8 +290,8 @@ export const setInputMutedAtom = soundMutedFieldAtom("input_muted");
 const triggerSideEffects = (section: keyof SettingsData, data: SettingsData): void => {
   switch (section) {
     case "display":
-      execScript("~/.local/bin/apply-display-scale").catch(() => undefined);
-      execScript("~/.local/bin/night-light").catch(() => undefined);
+      void runScript("apply-display-scale");
+      void runScript("night-light");
       break;
     case "icons":
       void setGSetting("org.gnome.desktop.interface", "icon-theme", data.icons.icon_theme);

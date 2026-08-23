@@ -22,13 +22,12 @@ type Capabilities struct {
 	PywalCache        bool `json:"pywal_cache"`
 }
 
-// hasScript reports whether an executable file exists at $HOME/.local/bin/<name>.
+// hasScript reports whether a named helper script resolves to an executable
+// in the bin-dir candidates ($NIRI_SCRIPT_BIN_DIR, XDG_BIN_HOME,
+// ~/.local/bin) or anywhere on $PATH.
 func hasScript(home, name string) bool {
-	if home == "" {
-		return false
-	}
-	info, err := os.Stat(filepath.Join(home, ".local", "bin", name))
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+	_, ok := ResolveScript(home, name)
+	return ok
 }
 
 func hasBinary(name string) bool {

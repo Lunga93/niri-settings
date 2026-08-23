@@ -21,6 +21,7 @@ A cross-platform-styled desktop settings application for the [niri](https://gith
 | 6 | [[06 Design Brief]] | Requirements for designers — capabilities, constraints, deliverables |
 | 7 | [[07 Roadmap]] | Prioritized backlog: P0 fixes → P4 design overhaul, with verification gates |
 | 8 | [[08 Changelog]] | Dated record of fixes: symptom → root cause → fix → verification |
+| 9 | [[09 Setup Tiers]] | What works on a bare niri box, helper-script resolution, full-experience setup |
 
 ## TL;DR
 

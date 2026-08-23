@@ -54,6 +54,7 @@ vi.mock("@/lib/services", () => ({
   }),
   setWallpaper: vi.fn().mockResolvedValue(true),
   getThemeColors: vi.fn().mockResolvedValue(null),
+  runScript: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/ipc", () => ({

@@ -13,6 +13,7 @@ import {
 } from "../lib/services";
 import { pywalThemeAtom, applyThemeToDOM } from "./theme";
 import { settingsAtom, appearanceAtom } from "./settings";
+import { runScript } from "../lib/services";
 import { execScript } from "../lib/ipc";
 import { logger } from "../lib/logger";
 
@@ -151,7 +152,8 @@ export const selectWallpaperAtom = atom(null, (_get, set, path: string | null) =
 // old URL — bump the thumbs version and re-read the theme like a manual apply.
 export const fetchNewWallpaperAtom = atom(null, async (get, set): Promise<boolean> => {
   try {
-    await execScript("~/.local/bin/fetch-wallpaper");
+    const ok = await runScript("fetch-wallpaper");
+    if (!ok) return false;
   } catch (err) {
     logger.error("Failed to fetch wallpaper", err);
     return false;

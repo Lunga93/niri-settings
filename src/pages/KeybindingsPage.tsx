@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, RotateCcw, FileText } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
-import { keybindingsAtom, KEYBINDING_GROUPS, actionsMatch } from "@/stores";
+import IntegrationNotice from "@/components/settings/IntegrationNotice";
+import { keybindingsAtom, KEYBINDING_GROUPS, actionsMatch, capabilitiesAtom } from "@/stores";
 import {
   readKeybindings,
   writeKeybinding,
@@ -204,6 +205,7 @@ const CaptureDialog = ({
 
 const KeybindingsPage = (): React.JSX.Element => {
   const [, setBindings] = useAtom(keybindingsAtom);
+  const caps = useAtomValue(capabilitiesAtom);
   const [reloading, setReloading] = useState(false);
 
   const loadBindings = useCallback(async (): Promise<void> => {
@@ -265,6 +267,11 @@ const KeybindingsPage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-4 p-7">
+          <IntegrationNotice
+            show={!caps.niri}
+            title="niri not detected"
+            message="Keybinding changes require a running niri compositor (IPC socket). Edits will be saved but not applied until niri is available."
+          />
           {KEYBINDING_GROUPS.map((group, gi) => (
             <motion.div
               key={group.name}

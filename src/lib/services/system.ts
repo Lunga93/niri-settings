@@ -43,6 +43,18 @@ export const getNetworkStatus = async (): Promise<NetworkStatus | null> => {
   }
 };
 
+// Runs a named helper script resolved by the sidecar (NIRI_SCRIPT_BIN_DIR,
+// XDG_BIN_HOME, ~/.local/bin, then $PATH) so no install paths live here.
+export const runScript = async (name: string, args: string[] = []): Promise<boolean> => {
+  try {
+    await invokeRaw("run_script", { name, args });
+    return true;
+  } catch (err) {
+    sidecarLogger.error(`Failed to run helper script: ${name}`, err);
+    return false;
+  }
+};
+
 export const listDesktopThemes = async (): Promise<DesktopThemes | null> => {
   try {
     const raw = await invokeRaw("list_desktop_themes", {});

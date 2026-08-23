@@ -15,14 +15,15 @@ import (
 var execScriptTimeout = 20 * time.Second
 
 // ExecScript runs a shell command via bash -c with a hard timeout.
-//
-// stdout/stderr are redirected to a temp FILE instead of pipes on purpose:
-// backgrounded children inherit the file descriptors harmlessly, whereas
-// inherited pipes keep io.Copy alive forever and deadlock cmd.Wait once a
-// daemon outlives the script. The process group is killed on timeout so
-// runaway foreground children cannot linger either.
 func ExecScript(script string) error {
-	cmd := exec.Command("bash", "-c", script)
+	return RunCommand("bash", []string{"-c", script})
+}
+
+// RunCommand executes a program with args under the shared guard rails:
+// file-backed stdio (so daemons inheriting fds can't deadlock Wait),
+// process groups and a timeout SIGKILL.
+func RunCommand(name string, args []string) error {
+	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	logFile, err := os.CreateTemp("", "niri-exec-*.log")
@@ -56,12 +57,22 @@ func ExecScript(script string) error {
 	logFile.Close()
 
 	if timedOut {
-		return fmt.Errorf("script timed out after %s: %s", execScriptTimeout, script)
+		return fmt.Errorf("script timed out after %s: %s", execScriptTimeout, name)
 	}
 	if waitErr != nil {
 		return fmt.Errorf("script execution failed: %w (output: %s)", waitErr, tailFile(logPath))
 	}
 	return nil
+}
+
+// RunNamedScript resolves a helper script by name (bin dirs then $PATH) and
+// runs it with args, so callers never hardcode install locations.
+func RunNamedScript(home, name string, scriptArgs []string) error {
+	path, ok := ResolveScript(home, name)
+	if !ok {
+		return fmt.Errorf("helper script %q not found (searched NIRI_SCRIPT_BIN_DIR, XDG_BIN_HOME, ~/.local/bin, $PATH)", name)
+	}
+	return RunCommand(path, scriptArgs)
 }
 
 // tailFile returns the last 400 bytes of a file for error messages.
@@ -92,7 +103,8 @@ func SetGSetting(schema, key, value string) error {
 	return nil
 }
 
-// SetWallpaper invokes ~/.local/bin/set-wallpaper or set-wallpaper with the specified wallpaper path.
+// SetWallpaper runs the set-wallpaper helper (resolved, not hardcoded).
 func SetWallpaper(wallpaperPath string) error {
-	return ExecScript(fmt.Sprintf("~/.local/bin/set-wallpaper %q", wallpaperPath))
+	home, _ := os.UserHomeDir()
+	return RunNamedScript(home, "set-wallpaper", []string{wallpaperPath})
 }

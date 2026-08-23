@@ -23,7 +23,6 @@ import {
   fetchNewWallpaperAtom,
 } from "../wallpaper";
 import * as services from "@/lib/services";
-import { execScript } from "@/lib/ipc";
 
 vi.mock("@/lib/services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
@@ -63,6 +62,7 @@ vi.mock("@/lib/services", () => ({
   }),
   setWallpaper: vi.fn().mockResolvedValue(true),
   getThemeColors: vi.fn().mockResolvedValue(null),
+  runScript: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/ipc", () => ({
@@ -252,7 +252,7 @@ describe("wallpaperAtoms", () => {
 
     const success = await store.set(fetchNewWallpaperAtom);
     expect(success).toBe(true);
-    expect(execScript).toHaveBeenCalledWith("~/.local/bin/fetch-wallpaper");
+    expect(services.runScript).toHaveBeenCalledWith("fetch-wallpaper");
     // Even when ensure generated nothing (same-path in-place overwrite), the
     // version must advance so unchanged URLs reload fresh bytes.
     expect(store.get(wallpaperThumbsVersionAtom)).toBe(versionBefore + 1);
@@ -261,7 +261,7 @@ describe("wallpaperAtoms", () => {
 
   it("fetchNewWallpaperAtom returns false and keeps version when the script fails", async () => {
     const versionBefore = store.get(wallpaperThumbsVersionAtom);
-    vi.mocked(execScript).mockRejectedValueOnce(new Error("script failed"));
+    vi.mocked(services.runScript).mockResolvedValueOnce(false);
 
     const success = await store.set(fetchNewWallpaperAtom);
     expect(success).toBe(false);
