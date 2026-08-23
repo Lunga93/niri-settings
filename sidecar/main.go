@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"niri-settings-sidecar/audio"
+	"niri-settings-sidecar/apps"
 	"niri-settings-sidecar/niri"
 	"niri-settings-sidecar/protocol"
 	"niri-settings-sidecar/settings"
@@ -55,6 +56,9 @@ var registry = map[string]protocol.Handler{
 	"set_startup_app_enabled": startup.HandleSetStartupAppEnabled,
 	"delete_startup_app":      startup.HandleDeleteStartupApp,
 	"ensure_autostart_runner": startup.HandleEnsureAutostartRunner,
+	"list_installed_apps":     apps.HandleListInstalledApps,
+	"list_default_apps":       apps.HandleListDefaultApps,
+	"set_default_app":         apps.HandleSetDefaultApp,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,

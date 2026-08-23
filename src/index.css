@@ -46,6 +46,31 @@
   /* ── Fonts ── */
   --font-sans: "Fira Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "MesloLGS Nerd Font Mono", "Fira Code", monospace;
+
+  /* ── Dynamic accent system ── */
+  --gradient-accent: linear-gradient(
+    135deg,
+    var(--color-accent),
+    color-mix(in srgb, var(--color-accent) 45%, #a855f7)
+  );
+  --shadow-glow: 0 0 24px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+@layer components {
+  .card-glass {
+    background-color: color-mix(in srgb, var(--color-surface-elevated) 82%, transparent);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    box-shadow: var(--shadow-card);
+  }
+
+  .text-gradient-accent {
+    background-image: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 
 :root {

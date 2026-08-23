@@ -8,6 +8,14 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Default Apps page; startup picker replaces the form; glass design refresh
+
+**New page — Default Apps** (Personalization): curated MIME categories (browser, email, editor, images, music, video, file manager) showing the active handler with a dropdown of every installed application that actually declares support for that content type. Applied system-wide via `xdg-mime`; optimistic update with server reconciliation. Powered by a new sidecar `apps` package: XDG-compliant desktop-entry scanner (`XDG_DATA_HOME`/`XDG_DATA_DIRS`, user dirs win, Flatpak exports included, `NoDisplay`/`Hidden` skipped, `%f/%u/…` field codes stripped, semicolon-separated MimeType parsing) with 8 hermetic tests.
+
+**Startup Apps UX**: the add-by-form is gone. New searchable picker lists installed applications — type to filter, click to launch-enable. Custom commands demoted to a collapsible escape hatch. Runner-status card restyled with accent gradient.
+
+**Design language**: shared components upgraded so every page inherits it — glass cards (translucent surfaces + backdrop blur + layered shadows + inner highlight), accent-gradient header hairlines and glowing section dots on SettingsGroup, gradient sidebar indicator pill, new tokens (`--gradient-accent`, `--shadow-glow`, `.card-glass`, `.text-gradient-accent`) driven by the pywal wallpaper palette.
+
 ## 2026-08-23 — Startup Applications page; dex runner fixed on live config
 
 **Feature:** New "Startup Apps" page under System managing XDG autostart entries (`~/.config/autostart/*.desktop`): list with enable/disable toggles (Hidden/NoDisplay flags), add-by-name+command form, delete. Because niri does not process XDG autostart itself, the page detects whether a runner exists — `dex`/`wlautostart` on `$PATH` **and** a `spawn-at-startup` line in the niri config — and offers a one-click, idempotent fix that appends `spawn-at-startup "dex -a"` when missing.

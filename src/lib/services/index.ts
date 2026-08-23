@@ -6,3 +6,4 @@ export * from "./audio";
 export * from "./theme";
 export * from "./wallpaper";
 export * from "./startup";
+export * from "./apps";

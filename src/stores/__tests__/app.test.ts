@@ -18,8 +18,10 @@ describe("activePageAtom", () => {
       "wallpaper",
       "appearance",
       "icons",
+      "defaults",
       "display",
       "keybindings",
+      "startup",
       "network",
       "sound",
       "sysinfo",
@@ -48,9 +50,9 @@ describe("SIDEBAR_SECTIONS", () => {
     expect(SIDEBAR_SECTIONS[2].section).toBe("About");
   });
 
-  it("Personalization has wallpaper, appearance, icons", () => {
+  it("Personalization has wallpaper, appearance, icons, defaults", () => {
     const ids = SIDEBAR_SECTIONS[0].items.map((i) => i.id);
-    expect(ids).toEqual(["wallpaper", "appearance", "icons"]);
+    expect(ids).toEqual(["wallpaper", "appearance", "icons", "defaults"]);
   });
 
   it("System has display, keybindings, startup, network, sound", () => {

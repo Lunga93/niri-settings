@@ -4,6 +4,7 @@ import {
   Image,
   Palette,
   Shapes,
+  AppWindow,
   Monitor,
   Keyboard,
   Rocket,
@@ -19,6 +20,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   image: Image,
   palette: Palette,
   shapes: Shapes,
+  "app-window": AppWindow,
   monitor: Monitor,
   keyboard: Keyboard,
   rocket: Rocket,
@@ -46,17 +48,26 @@ const SidebarItem = ({ id, label, icon, isActive }: SidebarItemProps): React.JSX
         transition-colors duration-150 cursor-pointer
         ${
           isActive
-            ? "bg-accent/18 text-text-header"
+            ? "text-text-header"
             : "text-text-subtitle hover:bg-surface-hover hover:text-text-body"
         }
       `}
+      style={
+        isActive
+          ? {
+              background:
+                "linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 22%, transparent), color-mix(in srgb, var(--color-accent) 6%, transparent))",
+            }
+          : undefined
+      }
       whileTap={{ scale: 0.98 }}
     >
       <AnimatePresence>
         {isActive && (
           <motion.div
             layoutId="sidebar-indicator"
-            className="absolute -left-1 top-1/2 h-[55%] w-[3px] -translate-y-1/2 rounded-full bg-accent"
+            className="absolute -left-1 top-1/2 h-[55%] w-[3px] -translate-y-1/2 rounded-full"
+            style={{ background: "var(--gradient-accent)", boxShadow: "var(--shadow-glow)" }}
             initial={{ opacity: 0, scaleY: 0.5 }}
             animate={{ opacity: 1, scaleY: 1 }}
             exit={{ opacity: 0, scaleY: 0.5 }}

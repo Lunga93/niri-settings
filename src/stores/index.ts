@@ -7,3 +7,4 @@ export * from "./app";
 export * from "./keybindings";
 export * from "./capabilities";
 export * from "./startup";
+export * from "./apps";
