@@ -2,7 +2,13 @@ import { atom } from "jotai";
 import type { Getter, Setter, WritableAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SettingsDataSchema, type SettingsData, type SoundSettings } from "@/lib/schemas";
-import { writeSettings, readSettings, setGSetting, setNiriCursor } from "@/lib/services";
+import {
+  writeSettings,
+  readSettings,
+  setGSetting,
+  setNiriCursor,
+  setQuickshellIconTheme,
+} from "@/lib/services";
 import { execScript } from "@/lib/ipc";
 import { logger, sidecarLogger } from "@/lib/logger";
 
@@ -181,6 +187,7 @@ export const setIconThemeAtom = atom(null, (get, set, theme: string) => {
       void applyGSetting("org.gnome.desktop.interface", "icon-theme", theme).then((ok) =>
         set(gsettingErrorAtom, ok ? null : `Failed to apply icon theme "${theme}"`),
       );
+      void setQuickshellIconTheme(theme);
     },
   );
 });
@@ -230,6 +237,7 @@ export const restoreIconsBackupAtom = atom(null, (get, set) => {
     () => {
       if (backup.icon_theme) {
         void applyGSetting("org.gnome.desktop.interface", "icon-theme", backup.icon_theme);
+        void setQuickshellIconTheme(backup.icon_theme);
       }
       if (backup.cursor_theme) {
         void applyCursor(backup.cursor_theme, get(settingsAtom).icons.cursor_size);

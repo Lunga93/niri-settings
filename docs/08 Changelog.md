@@ -10,15 +10,16 @@ Entries are newest-first. Pair every entry with a git commit (conventional commi
 
 ## 2026-08-23 — Cursor control is real; quickshell Icons page deprecated
 
-**Symptom:** Icon/cursor changes wrote gsettings correctly (verified: `Cosmic`/`Pop` in both `~/.config/dotfiles/settings.json` and gsettings) yet nothing visibly changed. Root causes: no xsettings daemon on niri ⇒ running GTK apps never repaint; the quickshell bar renders hardcoded text glyphs and ignores icon themes entirely; niri's `config.kdl` had no `cursor` block so cursor-theme barely reached anything; and a second competing UI — quickshell's own IconsPage with hardcoded presets (Tela/WhiteSur/Numix…) — could stomp values written by this app.
+**Symptom:** Icon/cursor changes wrote gsettings correctly (verified: `Cosmic`/`Pop` in both `~/.config/dotfiles/settings.json` and gsettings) yet nothing visibly changed. Root causes: no xsettings daemon on niri ⇒ running GTK apps never repaint; the quickshell bar renders hardcoded text glyphs and ignores icon themes entirely; niri's `config.kdl` had no `cursor` block so cursor-theme barely reached anything; and a second competing UI — quickshell's own IconsPage with hardcoded presets (Tela/WhiteSur/Numix…) — could stomp values written by this app. Tray icons rendered as generic placeholders because Qt had **no icon theme configured at all** (falls back to hicolor).
 
 **Fixes:**
 - **Sidecar `set_niri_cursor`:** patches the top-level `cursor { }` block of the niri config (`sidecar/niri/cursor.go`; brace-counted block scan, commented-out blocks ignored, missing keys inserted, block appended when absent), writes `~/.config/environment.d/50-niri-cursor.conf` (`XCURSOR_THEME`/`XCURSOR_SIZE`) for future sessions, then hot-reloads niri. Five hermetic tests cover append/replace/insert/comment+nesting/invalid args.
 - **Cursor atoms** (`stores/settings.ts`) now apply through one `applyCursor()` helper: gsettings (GTK apps) **and** niri config, on theme change, size change, and backup restore alike.
 - **quickshell Icons page deprecated:** sidebar entry and `pageSources` mapping removed (index-mapped lists stay aligned); `IconsPage.qml` replaced by an inert stub that only offers an "Open Niri Settings" launcher — it reads/writes nothing.
-- **Icons page hints:** captions state where each change takes effect (newly opened apps for icons; niri immediately for cursors).
+- **Icons page hints:** captions state where each change takes effect.
+- **Sidecar `set_quickshell_icon_theme`:** rewrites the `//@ pragma IconTheme <name>` line in quickshell's `shell.qml` (`sidecar/system/quickshell.go`; inserts under the last pragma or before imports when absent). quickshell watches its config and hot-reloads, re-resolving every tray/dock icon under the new theme — no restart needed. Wired into the icon-theme atom and backup restore; verified live via `qs log` ("Reloading configuration...") after a click.
 
-**Regression hints:** Cursor not applying ⇒ check `cursor { }` in `~/.config/niri/config.kdl` and `environment.d/50-niri-cursor.conf`; sidecar tests in `niri/cursor_test.go`. Wrong quickshell page opening ⇒ `Categories.qml` order must match `SettingsContent.qml` `pageSources` order.
+**Regression hints:** Cursor not applying ⇒ check `cursor { }` in `~/.config/niri/config.kdl` and `environment.d/50-niri-cursor.conf`; sidecar tests in `niri/cursor_test.go`. Bar icons not following theme changes ⇒ check the pragma line in `~/dotfiles/quickshell/.config/quickshell/shell.qml` and `qs log`; sidecar tests in `system/quickshell_test.go`. Wrong quickshell page opening ⇒ `Categories.qml` order must match `SettingsContent.qml` `pageSources` order.
 
 ## 2026-08-23 — Theme switching feels instant; Icons page actually works
 

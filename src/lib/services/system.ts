@@ -40,6 +40,18 @@ export const setNiriCursor = async (theme: string, size: number): Promise<boolea
   }
 };
 
+// Rewrites the IconTheme pragma in quickshell's shell.qml; the shell watches
+// the file and reloads so bar/tray/dock icons follow the new theme.
+export const setQuickshellIconTheme = async (theme: string): Promise<boolean> => {
+  try {
+    await invokeRaw("set_quickshell_icon_theme", { theme });
+    return true;
+  } catch (err) {
+    sidecarLogger.error("Failed to set quickshell icon theme", err);
+    return false;
+  }
+};
+
 export const readFile = async (path: string): Promise<string | null> => {
   try {
     const raw = await invokeRaw("read_file", { path });

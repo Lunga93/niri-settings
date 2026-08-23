@@ -180,7 +180,7 @@ const IconsPage = (): React.JSX.Element => {
               onSelect={setIconTheme}
             />
             <div className="px-4 py-2.5 text-[11px] text-text-subtitle">
-              Applies to newly opened apps — running apps pick up the theme when relaunched.
+              Applies instantly to the top bar and to newly opened apps.
             </div>
           </SettingsGroup>
 

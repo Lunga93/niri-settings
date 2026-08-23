@@ -41,6 +41,8 @@ var registry = map[string]protocol.Handler{
 	"write_file":          system.HandleWriteFile,
 	"open_file":           system.HandleOpenFile,
 	"list_desktop_themes": system.HandleListDesktopThemes,
+
+	"set_quickshell_icon_theme": system.HandleSetQuickshellIconTheme,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,

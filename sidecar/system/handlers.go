@@ -67,6 +67,25 @@ func HandleSetGSetting(args map[string]any) {
 	protocol.WriteResponse(map[string]string{"status": "ok"})
 }
 
+// HandleSetQuickshellIconTheme patches the IconTheme pragma in quickshell's
+// shell.qml so its bar/tray/dock icons follow the selected theme after the
+// shell hot-reloads.
+func HandleSetQuickshellIconTheme(args map[string]any) {
+	theme, ok := protocol.GetStringArg(args, "theme")
+	if !ok || theme == "" {
+		protocol.InvalidArgs("Missing 'theme' argument")
+		return
+	}
+
+	if err := SetQuickshellIconTheme(theme); err != nil {
+		protocol.WriteError("QUICKSHELL_ICON_THEME_ERROR", err.Error(), nil)
+		return
+	}
+	_ = ReloadQuickshell()
+
+	protocol.WriteResponse(map[string]string{"status": "ok"})
+}
+
 // HandleReadFile streams a file's content back as a JSON string.
 func HandleReadFile(args map[string]any) {
 	path, ok := protocol.GetStringArg(args, "path")
