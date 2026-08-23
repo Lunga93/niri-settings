@@ -1,7 +1,7 @@
 import { useAtom, useSetAtom } from "jotai";
 import React from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Sun, Moon, Check, RefreshCw, Eye } from "lucide-react";
+import { Sparkles, Sun, Moon, Check, RefreshCw, Loader2 } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
 import {
@@ -9,8 +9,11 @@ import {
   setColorSchemeAtom,
   setAccentColorAtom,
   setAccentModeAtom,
+  pywalThemeAtom,
+  themeLoadingAtom,
+  loadThemeColorsAtom,
+  deriveThemeTokens,
 } from "@/stores";
-import { pywalThemeAtom, themeLoadingAtom, loadThemeColorsAtom } from "@/stores";
 
 const CURATED_ACCENTS = [
   "#0a84ff", // Blue
@@ -47,10 +50,16 @@ const AppearancePage = (): React.JSX.Element => {
     }
   });
 
-  const activeColor =
-    appearance.accent_mode === "manual" && appearance.manual_primary
-      ? appearance.manual_primary
-      : pywalTheme.primary_accent || "#0a84ff";
+  const tokens = deriveThemeTokens(pywalTheme, appearance);
+  const palette = [
+    { role: "Background", hex: tokens.window },
+    { role: "Sidebar", hex: tokens.sidebar },
+    { role: "Card", hex: tokens.elevated },
+    { role: "Text", hex: tokens.textHeader },
+    { role: "Secondary", hex: tokens.textSubtitle },
+    { role: "Accent", hex: tokens.accent },
+    { role: "Border", hex: tokens.border },
+  ];
 
   return (
     <div className="h-full overflow-y-auto scrollbar-thin">
@@ -81,47 +90,62 @@ const AppearancePage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7">
-          {/* ── LIVE PREVIEW CARD ── */}
+          {/* ── ACTIVE PALETTE — the exact tokens applied to this window ── */}
           <div className="rounded-2xl border border-border bg-surface-elevated p-5 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Eye size={15} className="text-accent" />
-                <span className="text-[12px] font-semibold text-text-header">
-                  Live Theme Preview
-                </span>
+                <Sparkles size={15} className="text-accent" />
+                <span className="text-[12px] font-semibold text-text-header">Active Palette</span>
               </div>
-              <span className="text-[11px] font-mono text-text-subtitle">{activeColor}</span>
+              <span className="text-[11px] text-text-subtitle">
+                {tokens.isLight ? "Light" : "Dark"} ·{" "}
+                {appearance.accent_mode === "manual"
+                  ? `manual accent ${tokens.accent}`
+                  : `pywal accent ${tokens.accent}`}
+              </span>
             </div>
 
-            {/* Simulated Desktop Component */}
-            <div className="rounded-xl border border-border bg-surface-window p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap gap-2.5 items-center">
+              {palette.map((entry) => (
                 <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-md"
-                  style={{ backgroundColor: activeColor }}
+                  key={entry.role}
+                  title={`${entry.role} ${entry.hex}`}
+                  className="flex flex-col items-center gap-1"
                 >
-                  <Sparkles size={18} />
+                  <div
+                    className="h-10 w-10 rounded-xl border border-border shadow-sm"
+                    style={{ backgroundColor: entry.hex }}
+                  />
+                  <span className="text-[9px] text-text-subtitle">{entry.role}</span>
                 </div>
-                <div>
-                  <div className="text-[13px] font-bold text-text-header">Niri Desktop Shell</div>
-                  <div className="text-[11px] text-text-subtitle">
-                    Mode: {appearance.accent_mode === "dynamic" ? "Pywal Dynamic" : "Manual Custom"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white shadow-sm"
-                  style={{ backgroundColor: activeColor }}
-                >
-                  Primary Accent
-                </div>
-                <div className="px-3 py-1.5 rounded-lg border border-border bg-surface-active text-[11px] font-medium text-text-body">
-                  Surface Active
-                </div>
-              </div>
+              ))}
             </div>
+
+            {/* Sample surface rendered with the real token values */}
+            <div
+              className="rounded-xl border border-border p-3 flex items-center justify-between"
+              style={{ backgroundColor: tokens.elevated }}
+            >
+              <span className="text-[12px]" style={{ color: tokens.textHeader }}>
+                Header text
+              </span>
+              <span className="text-[11px]" style={{ color: tokens.textSubtitle }}>
+                Subtitle text
+              </span>
+              <span
+                className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white"
+                style={{ backgroundColor: tokens.accent }}
+              >
+                Accent button
+              </span>
+            </div>
+
+            {themeLoading && (
+              <div className="flex items-center gap-1.5 text-[11px] text-text-subtitle">
+                <Loader2 size={11} className="animate-spin" />
+                Regenerating pywal palette…
+              </div>
+            )}
           </div>
 
           {/* ── THEME MODE SECTION ── */}
@@ -139,7 +163,9 @@ const AppearancePage = (): React.JSX.Element => {
                       key={scheme}
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
-                      onClick={(): void => setColorScheme(scheme)}
+                      onClick={(): void => {
+                        void setColorScheme(scheme);
+                      }}
                       className={`
                         flex items-center gap-2 rounded-xl px-4 py-2 text-[12px] font-medium border transition-all cursor-pointer
                         ${
@@ -172,7 +198,9 @@ const AppearancePage = (): React.JSX.Element => {
                       key={mode}
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
-                      onClick={(): void => setAccentMode(mode)}
+                      onClick={(): void => {
+                        void setAccentMode(mode);
+                      }}
                       className={`
                         rounded-xl px-4 py-2 text-[12px] font-medium border transition-all cursor-pointer
                         ${
@@ -200,13 +228,15 @@ const AppearancePage = (): React.JSX.Element => {
 
               <div className="flex flex-wrap gap-2.5 items-center">
                 {pywalColors.map((color) => {
-                  const isSelected = activeColor.toLowerCase() === color.toLowerCase();
+                  const isSelected = tokens.accent.toLowerCase() === color.toLowerCase();
                   return (
                     <motion.button
                       key={color}
                       whileHover={{ scale: 1.18 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={(): void => setAccentColor(color)}
+                      onClick={(): void => {
+                        void setAccentColor(color);
+                      }}
                       title={color}
                       className={`
                         relative h-7 w-7 rounded-full cursor-pointer transition-all flex items-center justify-center shadow-sm
@@ -236,13 +266,15 @@ const AppearancePage = (): React.JSX.Element => {
 
               <div className="flex flex-wrap gap-2.5 items-center">
                 {CURATED_ACCENTS.map((color) => {
-                  const isSelected = activeColor.toLowerCase() === color.toLowerCase();
+                  const isSelected = tokens.accent.toLowerCase() === color.toLowerCase();
                   return (
                     <motion.button
                       key={color}
                       whileHover={{ scale: 1.18 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={(): void => setAccentColor(color)}
+                      onClick={(): void => {
+                        void setAccentColor(color);
+                      }}
                       title={color}
                       className={`
                         relative h-7 w-7 rounded-full cursor-pointer transition-all flex items-center justify-center shadow-sm

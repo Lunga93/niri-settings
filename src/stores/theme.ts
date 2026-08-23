@@ -1,17 +1,15 @@
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 import { PywalThemeSchema, type PywalTheme, type AppearanceSettings } from "../lib/schemas";
-import { getThemeColors } from "../lib/services";
+import { getThemeColors, writeSettings } from "../lib/services";
+import { execScript } from "../lib/ipc";
 import { logger } from "../lib/logger";
-import { appearanceAtom } from "./settings";
+import { settingsAtom, appearanceAtom } from "./settings";
 
 export const DEFAULT_PYWAL_THEME: PywalTheme = PywalThemeSchema.parse({});
 
 export const pywalThemeAtom = atom<PywalTheme>(DEFAULT_PYWAL_THEME);
 export const themeLoadingAtom = atom<boolean>(false);
 
-/**
- * Converts a hex color (#RRGGBB) to rgba string with alpha.
- */
 export const hexToRgba = (hex: string, alpha: number): string => {
   if (!hex || !hex.startsWith("#")) return `rgba(10, 132, 255, ${alpha})`;
   const clean = hex.replace("#", "");
@@ -30,70 +28,156 @@ export const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${isNaN(r) ? 10 : r}, ${isNaN(g) ? 132 : g}, ${isNaN(b) ? 255 : b}, ${alpha})`;
 };
 
-/**
- * Applies pywal theme colors directly to document.documentElement CSS variables.
- */
-export const applyThemeToDOM = (theme: PywalTheme, appearance: AppearanceSettings): void => {
-  if (typeof document === "undefined") return;
+const adjustBrightness = (hex: string, percent: number): string => {
+  if (!hex || !hex.startsWith("#")) return hex;
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
 
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
+
+  const clamp = (v: number): number => Math.min(255, Math.max(0, v));
+  return `#${clamp(r + Math.round((255 * percent) / 100))
+    .toString(16)
+    .padStart(2, "0")}${clamp(g + Math.round((255 * percent) / 100))
+    .toString(16)
+    .padStart(2, "0")}${clamp(b + Math.round((255 * percent) / 100))
+    .toString(16)
+    .padStart(2, "0")}`;
+};
+
+export interface ThemeTokens {
+  isLight: boolean;
+  window: string;
+  sidebar: string;
+  titlebar: string;
+  elevated: string;
+  hover: string;
+  active: string;
+  accent: string;
+  textHeader: string;
+  textBody: string;
+  textSubtitle: string;
+  textMuted: string;
+  border: string;
+}
+
+// Single source of truth for theme math — consumed by applyThemeToDOM and
+// the Appearance page's live preview so both always agree.
+export const deriveThemeTokens = (
+  theme: PywalTheme,
+  appearance: AppearanceSettings,
+): ThemeTokens => {
   const isLight = appearance.color_scheme === "light";
   const bg = theme.special.background || (isLight ? "#f5ede0" : "#12100e");
   const fg = theme.special.foreground || (isLight ? "#1a1611" : "#dfe4e9");
 
-  // Determine active accent
   let accent = theme.primary_accent || theme.colors.color4 || "#0a84ff";
   if (appearance.accent_mode === "manual" && appearance.manual_primary) {
     accent = appearance.manual_primary;
   }
 
+  return {
+    isLight,
+    window: bg,
+    sidebar: isLight ? "#ede3d4" : adjustBrightness(bg, -8),
+    titlebar: isLight ? "#e5dbcc" : adjustBrightness(bg, 5),
+    elevated: isLight ? "#ffffff" : adjustBrightness(bg, 10),
+    hover: hexToRgba(fg, 0.08),
+    active: hexToRgba(fg, 0.14),
+    accent,
+    textHeader: fg,
+    textBody: theme.colors.color7 || fg,
+    textSubtitle: theme.colors.color8 || (isLight ? "#6c6356" : "#9c9fa3"),
+    textMuted: isLight ? "#9b9184" : "#6c665d",
+    border: hexToRgba(fg, 0.1),
+  };
+};
+
+const TOKEN_VAR_LIST: ReadonlyArray<[keyof ThemeTokens, string]> = [
+  ["window", "--color-surface-window"],
+  ["sidebar", "--color-surface-sidebar"],
+  ["titlebar", "--color-surface-titlebar"],
+  ["elevated", "--color-surface-elevated"],
+  ["hover", "--color-surface-hover"],
+  ["active", "--color-surface-active"],
+  ["accent", "--color-accent"],
+  ["textHeader", "--color-text-header"],
+  ["textBody", "--color-text-body"],
+  ["textSubtitle", "--color-text-subtitle"],
+  ["textMuted", "--color-text-muted"],
+  ["border", "--color-border"],
+];
+
+export const applyTokensToDOM = (tokens: ThemeTokens): void => {
+  if (typeof document === "undefined") return;
   const root = document.documentElement;
-
-  // Background and surfaces
-  root.style.setProperty("--color-surface-window", bg);
-  root.style.setProperty("--color-surface-content", bg);
-  root.style.setProperty("--color-surface-sidebar", isLight ? "#ede3d4" : adjustBrightness(bg, -8));
-  root.style.setProperty("--color-surface-titlebar", isLight ? "#e5dbcc" : adjustBrightness(bg, 5));
-  root.style.setProperty(
-    "--color-surface-elevated",
-    isLight ? "#ffffff" : adjustBrightness(bg, 10),
-  );
-  root.style.setProperty("--color-surface-hover", hexToRgba(fg, 0.08));
-  root.style.setProperty("--color-surface-active", hexToRgba(fg, 0.14));
-
-  // Accent
-  root.style.setProperty("--color-accent", accent);
-  root.style.setProperty("--color-accent-soft", hexToRgba(accent, 0.18));
-  root.style.setProperty("--color-accent-hover", hexToRgba(accent, 0.28));
-
-  // Text
-  root.style.setProperty("--color-text-header", fg);
-  root.style.setProperty("--color-text-body", theme.colors.color7 || fg);
-  root.style.setProperty(
-    "--color-text-subtitle",
-    theme.colors.color8 || (isLight ? "#6c6356" : "#9c9fa3"),
-  );
-  root.style.setProperty("--color-text-muted", isLight ? "#9b9184" : "#6c665d");
-
-  // Border
-  root.style.setProperty("--color-border", hexToRgba(fg, 0.1));
-  root.style.setProperty("--color-border-strong", hexToRgba(fg, 0.18));
+  for (const [key, cssVar] of TOKEN_VAR_LIST) {
+    root.style.setProperty(cssVar, String(tokens[key]));
+  }
 };
 
-const adjustBrightness = (hex: string, percent: number): string => {
-  if (!hex || !hex.startsWith("#")) return hex;
-  const clean = hex.replace("#", "");
-  let r = parseInt(clean.substring(0, 2), 16);
-  let g = parseInt(clean.substring(2, 4), 16);
-  let b = parseInt(clean.substring(4, 6), 16);
-
-  if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
-
-  r = Math.min(255, Math.max(0, r + Math.round((255 * percent) / 100)));
-  g = Math.min(255, Math.max(0, g + Math.round((255 * percent) / 100)));
-  b = Math.min(255, Math.max(0, b + Math.round((255 * percent) / 100)));
-
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+export const applyThemeToDOM = (theme: PywalTheme, appearance: AppearanceSettings): void => {
+  applyTokensToDOM(deriveThemeTokens(theme, appearance));
 };
+
+// Appearance changes drive a heavy external pipeline (pywal regeneration +
+// terminal broadcast + app config rewrites, easily seconds). Rapid toggles
+// are serialized so an older slow run can never clobber a newer scheme.
+let appearanceChain: Promise<void> = Promise.resolve();
+
+const enqueueAppearanceChange = (task: () => Promise<void>): Promise<void> => {
+  const run = appearanceChain.then(task).catch((err) => {
+    logger.warn("Appearance pipeline failed", err);
+  });
+  appearanceChain = run;
+  return run;
+};
+
+// State updates and the optimistic repaint happen synchronously; only the
+// external regeneration is queued behind the chain.
+const mutateAppearance = (
+  get: Getter,
+  set: Setter,
+  partial: Partial<AppearanceSettings>,
+): Promise<void> => {
+  const nextAppearance = { ...get(appearanceAtom), ...partial };
+  set(settingsAtom, { ...get(settingsAtom), appearance: nextAppearance });
+
+  // Instant switch using the current palette — light mode gets its true
+  // colors when the regenerated palette lands below.
+  applyThemeToDOM(get(pywalThemeAtom), nextAppearance);
+
+  return enqueueAppearanceChange(async () => {
+    // The script reads color_scheme/accent overrides from settings.json, so
+    // it must only start once the new snapshot is durably on disk.
+    await writeSettings(get(settingsAtom));
+    await execScript(`~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`);
+
+    const fresh = await getThemeColors();
+    if (fresh) {
+      set(pywalThemeAtom, fresh);
+      applyThemeToDOM(fresh, get(appearanceAtom));
+    }
+  });
+};
+
+export const setColorSchemeAtom = atom(null, (get, set, scheme: "dark" | "light"): Promise<void> =>
+  mutateAppearance(get, set, { color_scheme: scheme }),
+);
+
+export const setAccentColorAtom = atom(null, (get, set, color: string): Promise<void> =>
+  mutateAppearance(get, set, { accent_mode: "manual", manual_primary: color }),
+);
+
+export const setAccentSecondaryAtom = atom(null, (get, set, color: string): Promise<void> =>
+  mutateAppearance(get, set, { accent_mode: "manual", manual_secondary: color }),
+);
+
+export const setAccentModeAtom = atom(null, (get, set, mode: "dynamic" | "manual"): Promise<void> =>
+  mutateAppearance(get, set, { accent_mode: mode }),
+);
 
 export const loadThemeColorsAtom = atom(null, async (get, set) => {
   set(themeLoadingAtom, true);
@@ -101,8 +185,7 @@ export const loadThemeColorsAtom = atom(null, async (get, set) => {
     const data = await getThemeColors();
     if (data) {
       set(pywalThemeAtom, data);
-      const appearance = get(appearanceAtom);
-      applyThemeToDOM(data, appearance);
+      applyThemeToDOM(data, get(appearanceAtom));
       logger.info("Pywal theme colors loaded and applied");
     }
   } catch (err) {

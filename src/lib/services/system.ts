@@ -1,5 +1,22 @@
 import { invokeRaw } from "../ipc";
 import { sidecarLogger } from "../logger";
+import { DesktopThemesSchema, type DesktopThemes } from "../schemas";
+
+export const listDesktopThemes = async (): Promise<DesktopThemes | null> => {
+  try {
+    const raw = await invokeRaw("list_desktop_themes", {});
+    const parsed = DesktopThemesSchema.safeParse(raw);
+    if (!parsed.success) {
+      sidecarLogger.error("list_desktop_themes: unexpected payload", parsed.error);
+      return null;
+    }
+    return parsed.data;
+  } catch (err) {
+    sidecarLogger.error("Failed to list desktop themes", err);
+    return null;
+  }
+};
+
 export const setGSetting = async (schema: string, key: string, value: string): Promise<boolean> => {
   sidecarLogger.info(`gsettings set ${schema} ${key} ${value}`);
   try {

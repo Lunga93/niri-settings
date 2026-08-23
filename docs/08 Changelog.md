@@ -8,6 +8,19 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Theme switching feels instant; Icons page actually works
+
+**Symptom:** Toggling light mode left the app dark until restart ("feels broken"); a `sleep 0.5` hack raced settings.json; the Appearance "Live Theme Preview" was a static mockup saying nothing; the Icons page offered hardcoded theme lists (Tela/Colloid/WhiteSur/Numix…) mostly **not installed**, silently fired-and-forgot gsettings calls, and selecting a missing theme blanked system icons to placeholders with no way back.
+
+**Fixes:**
+- **Instant theme switch:** appearance write-atoms moved into `stores/theme.ts`; state + CSS-variable repaint happen synchronously, then a serialized chain persists → runs `apply-theme` (no sleep) → re-reads the regenerated pywal palette and repaints again. Rapid toggles can no longer clobber each other.
+- **Single source of truth:** `deriveThemeTokens(theme, appearance)` now feeds both `applyThemeToDOM` and the page preview.
+- **Active Palette card** replaces the mockup: labeled swatches of the exact tokens in effect (Background/Sidebar/Card/Text/Secondary/Accent/Border) + a sample surface rendered from those values + regeneration spinner.
+- **Icons page:** new sidecar `list_desktop_themes` scans XDG dirs (`index.theme` ⇒ icon theme; non-empty `cursors/` ⇒ cursor theme; reserved fallbacks skipped). Page shows only installed themes (current selection flagged if uninstalled), surfaces gsettings failures inline instead of swallowing them.
+- **Backups:** first override captures the original icon/cursor theme (localStorage-backed) and exposes "Restore original".
+
+**Regression hints:** DOM-not-updating after scheme toggle ⇒ check the serialized chain in `stores/theme.ts`. Icons page empty ⇒ `list_desktop_themes` payload must match `DesktopThemesSchema`. Theme math drift between preview and app ⇒ both must read `deriveThemeTokens`.
+
 ## 2026-08-23 — CI release pipeline
 
 **What:** `.github/workflows/release.yml` automates the whole release: tag push (`v*`) runs frontend gates, builds the optimized sidecar (with a stdio smoke test), bundles AppImage/deb/rpm, assembles the portable tarball, and publishes a GitHub Release with all four artifacts. Tag/version mismatch fails fast; manual `workflow_dispatch` uploads artifacts to the run instead. Docs §04 §1c.

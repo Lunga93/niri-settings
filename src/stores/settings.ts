@@ -1,12 +1,7 @@
 import { atom } from "jotai";
 import type { Getter, Setter, WritableAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
-import {
-  SettingsDataSchema,
-  type SettingsData,
-  type AppearanceSettings,
-  type SoundSettings,
-} from "@/lib/schemas";
+import { SettingsDataSchema, type SettingsData, type SoundSettings } from "@/lib/schemas";
 import { writeSettings, readSettings, setGSetting } from "@/lib/services";
 import { execScript } from "@/lib/ipc";
 import { logger, sidecarLogger } from "@/lib/logger";
@@ -104,46 +99,6 @@ export const loadSettingsAtom = atom(null, async (_get, set) => {
   }
 });
 
-// ── Appearance-specific write atoms ──
-
-export const setColorSchemeAtom = atom(null, (get, set, scheme: "dark" | "light") => {
-  commitSettings(
-    get,
-    set,
-    (prev) => ({ ...prev, appearance: { ...prev.appearance, color_scheme: scheme } }),
-    (next) => triggerSideEffects("appearance", next),
-  );
-});
-
-const accentColorAtom = (
-  key: "manual_primary" | "manual_secondary",
-): WritableAtom<null, [color: string], void> =>
-  atom(null, (get, set, color: string) => {
-    commitSettings(
-      get,
-      set,
-      (prev) => {
-        const appearance: AppearanceSettings = { ...prev.appearance, accent_mode: "manual" };
-        appearance[key] = color;
-        return { ...prev, appearance };
-      },
-      (next) => triggerSideEffects("appearance", next),
-    );
-  });
-
-export const setAccentColorAtom = accentColorAtom("manual_primary");
-
-export const setAccentSecondaryAtom = accentColorAtom("manual_secondary");
-
-export const setAccentModeAtom = atom(null, (get, set, mode: "dynamic" | "manual") => {
-  commitSettings(
-    get,
-    set,
-    (prev) => ({ ...prev, appearance: { ...prev.appearance, accent_mode: mode } }),
-    (next) => triggerSideEffects("appearance", next),
-  );
-});
-
 // ── Display-specific write atoms ──
 
 export const setDisplayScaleAtom = atom(null, (get, set, scale: string) => {
@@ -187,24 +142,54 @@ export const setNightLightTempAtom = atom(null, (get, set, temp: number) => {
 
 // ── Icons-specific write atoms ──
 
+// Last gsettings failure message, surfaced on the Icons page.
+export const gsettingErrorAtom = atom<string | null>(null);
+
+// Original values captured before the first override, so a broken theme
+// choice can always be rolled back.
+export const iconsBackupAtom = atomWithStorage<{ icon_theme?: string; cursor_theme?: string }>(
+  "niri-icons-backup",
+  {},
+);
+
+const applyGSetting = async (schema: string, key: string, value: string): Promise<boolean> => {
+  const ok = await setGSetting(schema, key, value);
+  if (!ok) logger.warn(`gsettings apply failed: ${schema} ${key}=${value}`);
+  return ok;
+};
+
 export const setIconThemeAtom = atom(null, (get, set, theme: string) => {
+  const current = get(settingsAtom).icons.icon_theme;
+  const backup = get(iconsBackupAtom);
+  if (backup.icon_theme === undefined && theme !== current) {
+    set(iconsBackupAtom, { ...backup, icon_theme: current });
+  }
   commitSettings(
     get,
     set,
     (prev) => ({ ...prev, icons: { ...prev.icons, icon_theme: theme } }),
     () => {
-      setGSetting("org.gnome.desktop.interface", "icon-theme", theme).catch(() => undefined);
+      void applyGSetting("org.gnome.desktop.interface", "icon-theme", theme).then((ok) =>
+        set(gsettingErrorAtom, ok ? null : `Failed to apply icon theme "${theme}"`),
+      );
     },
   );
 });
 
 export const setCursorThemeAtom = atom(null, (get, set, theme: string) => {
+  const current = get(settingsAtom).icons.cursor_theme;
+  const backup = get(iconsBackupAtom);
+  if (backup.cursor_theme === undefined && theme !== current) {
+    set(iconsBackupAtom, { ...backup, cursor_theme: current });
+  }
   commitSettings(
     get,
     set,
     (prev) => ({ ...prev, icons: { ...prev.icons, cursor_theme: theme } }),
     () => {
-      setGSetting("org.gnome.desktop.interface", "cursor-theme", theme).catch(() => undefined);
+      void applyGSetting("org.gnome.desktop.interface", "cursor-theme", theme).then((ok) =>
+        set(gsettingErrorAtom, ok ? null : `Failed to apply cursor theme "${theme}"`),
+      );
     },
   );
 });
@@ -215,9 +200,35 @@ export const setCursorSizeAtom = atom(null, (get, set, size: number) => {
     set,
     (prev) => ({ ...prev, icons: { ...prev.icons, cursor_size: size } }),
     () => {
-      setGSetting("org.gnome.desktop.interface", "cursor-size", String(size)).catch(
-        () => undefined,
-      );
+      void applyGSetting("org.gnome.desktop.interface", "cursor-size", String(size));
+    },
+  );
+});
+
+// Restores whichever slots were captured before the first override.
+export const restoreIconsBackupAtom = atom(null, (get, set) => {
+  const backup = get(iconsBackupAtom);
+  if (!backup.icon_theme && !backup.cursor_theme) return;
+  commitSettings(
+    get,
+    set,
+    (prev) => ({
+      ...prev,
+      icons: {
+        ...prev.icons,
+        ...(backup.icon_theme ? { icon_theme: backup.icon_theme } : {}),
+        ...(backup.cursor_theme ? { cursor_theme: backup.cursor_theme } : {}),
+      },
+    }),
+    () => {
+      if (backup.icon_theme) {
+        void applyGSetting("org.gnome.desktop.interface", "icon-theme", backup.icon_theme);
+      }
+      if (backup.cursor_theme) {
+        void applyGSetting("org.gnome.desktop.interface", "cursor-theme", backup.cursor_theme);
+      }
+      set(iconsBackupAtom, {});
+      set(gsettingErrorAtom, null);
     },
   );
 });
@@ -280,11 +291,6 @@ const triggerSideEffects = (section: keyof SettingsData, data: SettingsData): vo
         "cursor-size",
         String(data.icons.cursor_size),
       );
-      break;
-    case "appearance":
-      execScript(
-        `sleep 0.5 && ~/.local/bin/apply-theme "$(cat ~/.config/current_wallpaper)"`,
-      ).catch(() => undefined);
       break;
     case "sound":
       // Apply via WirePlumber; silently ignored when wpctl is unavailable.

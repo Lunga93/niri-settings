@@ -531,7 +531,9 @@ const DisplayPage = (): React.JSX.Element => {
               <PillSelector
                 options={["Dark", "Light"]}
                 currentIndex={appearance.color_scheme === "light" ? 1 : 0}
-                onSelected={(i): void => setColorScheme(i === 1 ? "light" : "dark")}
+                onSelected={(i): void => {
+                  void setColorScheme(i === 1 ? "light" : "dark");
+                }}
               />
             </SettingsRow>
           </SettingsGroup>

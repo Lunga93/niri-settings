@@ -8,14 +8,13 @@ import {
   soundAtom,
   setSettingsFieldAtom,
   setSettingsSectionAtom,
-  setColorSchemeAtom,
-  setAccentColorAtom,
   setDisplayScaleAtom,
   setNightLightAtom,
   setOutputVolumeAtom,
   setOutputMutedAtom,
   setInputMutedAtom,
 } from "../settings";
+import { setColorSchemeAtom, setAccentColorAtom } from "../theme";
 
 vi.mock("@/lib/services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
@@ -167,13 +166,34 @@ describe("appearance write atoms", () => {
     store = createStore();
   });
 
-  it("setColorSchemeAtom updates color_scheme", () => {
-    store.set(setColorSchemeAtom, "light");
+  it("setColorSchemeAtom updates color_scheme", async () => {
+    await store.set(setColorSchemeAtom, "light");
     expect(store.get(appearanceAtom).color_scheme).toBe("light");
   });
 
-  it("setAccentColorAtom sets manual mode and color", () => {
-    store.set(setAccentColorAtom, "#ff375f");
+  it("setColorSchemeAtom applies tokens to the DOM synchronously", async () => {
+    // Minimal document stub — the suite runs in node env and we only need to
+    // observe CSS custom property writes on <html>.
+    const vars = new Map<string, string>();
+    vi.stubGlobal("document", {
+      documentElement: {
+        style: {
+          setProperty: (k: string, v: string): void => void vars.set(k, v),
+          getPropertyValue: (k: string): string => vars.get(k) ?? "",
+        },
+      },
+    });
+    try {
+      await store.set(setColorSchemeAtom, "light");
+      expect(vars.get("--color-surface-sidebar")).toBe("#ede3d4");
+      expect(vars.get("--color-surface-elevated")).toBe("#ffffff");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("setAccentColorAtom sets manual mode and color", async () => {
+    await store.set(setAccentColorAtom, "#ff375f");
     const appearance = store.get(appearanceAtom);
     expect(appearance.accent_mode).toBe("manual");
     expect(appearance.manual_primary).toBe("#ff375f");
