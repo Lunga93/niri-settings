@@ -8,6 +8,21 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Rotated display renders landscape in arrangement canvas
+
+**Symptom:** On the Display page, a portrait monitor rotated 90° (DP-1, Dell P2422H) drew its canvas box wider than tall — the "vertical display" appeared horizontal despite the inspector showing 1080x1920 logical size and the 90° badge.
+
+**Root cause:** Double dimension swap. The sidecar's `niri msg outputs` parser set Width/Height from `Current mode:` (native pixels), but then let the later `Logical size:` line overwrite them — niri reports logical size already rotation-corrected (native 1920x1080 → logical 1080x1920). The Display page canvas *also* swaps width/height when `transform` is 90/270, so rotated displays were swapped twice and rendered in the wrong orientation. Unrotated displays were unaffected because their logical and native sizes match.
+
+**Fix:**
+- `sidecar/niri/outputs.go`: `Logical size` is now deliberately ignored — Width/Height stay native mode pixels; consumers apply transform swaps themselves. Removed the now-unused `sizeRe` regex.
+- Frontend untouched: its existing `isPortrait ? height : width` swap is correct against native dims.
+- Regression test `sidecar/niri/outputs_test.go` parses real two-monitor niri text and asserts native dims + transform survive parsing.
+
+**Verification:** gofmt/vet/tests green; all four sidecar binaries rebuilt; live stdio smoke test shows `DP-1 | mode: 1920x1080 | transform: 90`.
+
+**Regression hints:** Rotated boxes wrong again ⇒ check whether anything reintroduces logical-size overwriting or a second swap. Note `width/height` in DisplayOutput are **native mode pixels**, never logical.
+
 ## 2026-08-23 — Thumbnails invisible on first page open until a mood switch
 
 **Symptom:** Opening the wallpapers page showed skeleton placeholders instead of thumbnails; selecting a different mood made them appear. Terminal log showed every command executing twice (`get_wallpaper_info` ×2, `ensure_wallpaper_thumbs` ×2) on page open, which gave no clue why images stayed hidden.

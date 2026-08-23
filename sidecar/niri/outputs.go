@@ -42,7 +42,6 @@ type DisplayLayoutConfig struct {
 
 var (
 	modeRe = regexp.MustCompile(`(\d+)x(\d+)\s*@\s*([\d.]+)\s*Hz`)
-	sizeRe = regexp.MustCompile(`(\d+)x(\d+)`)
 	posRe  = regexp.MustCompile(`(-?\d+),\s*(-?\d+)`)
 )
 
@@ -141,10 +140,10 @@ func parseOutputs(raw string) []Output {
 				fmt.Sscanf(m[2], "%d", &current.Y)
 			}
 		case key == "Logical size":
-			if m := sizeRe.FindStringSubmatch(val); len(m) == 3 {
-				fmt.Sscanf(m[1], "%d", &current.Width)
-				fmt.Sscanf(m[2], "%d", &current.Height)
-			}
+			// Deliberately ignored: logical size is already rotation-corrected,
+			// while Width/Height must stay in native mode pixels. Consumers
+			// (canvas rendering, snapping) apply the transform swap themselves.
+			continue
 		case key == "Transform":
 			current.Transform = normalizeTransform(val)
 		}
