@@ -124,14 +124,14 @@ export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
           `Wallpaper info loaded: ${info.total_scanned} wallpapers scanned, current: ${info.current_wallpaper || "none"}`,
         );
         try {
-          // Resolves { generated, total } | null (not a boolean): generated is
-          // the number of thumbnails the sidecar had to (re)create this run.
-          const result = await ensureWallpaperThumbs();
+          // Always resolves { generated, total }; generated is the number of
+          // thumbnails the sidecar had to (re)create this run.
+          const thumbs = await ensureWallpaperThumbs();
           // Only bust card image caches when thumbnails were actually
           // (re)generated; otherwise revisiting the page would flash the whole
           // grid back to skeletons for no reason.
-          if (result && result.generated > 0) {
-            logger.info(`Thumbnails refreshed: ${result.generated} generated of ${result.total}`);
+          if (thumbs.generated > 0) {
+            logger.info(`Thumbnails refreshed: ${thumbs.generated} generated of ${thumbs.total}`);
             set(wallpaperThumbsVersionAtom, (v) => v + 1);
           }
         } catch {

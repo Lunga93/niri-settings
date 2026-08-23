@@ -287,9 +287,11 @@ export const getWallpaperInfo = async (): Promise<WallpaperInfo | null> => {
 
 /**
  * Generates missing/stale thumbnails for the wallpaper catalog via sidecar.
- * Returns null when the command fails or the response shape is unexpected.
+ * Always resolves a result object — { generated: 0 } covers both "nothing to
+ * do" and "command failed" (logged here), so callers never branch on
+ * null/boolean and simply compare generated against 0.
  */
-export const ensureWallpaperThumbs = async (): Promise<WallpaperThumbsResult | null> => {
+export const ensureWallpaperThumbs = async (): Promise<WallpaperThumbsResult> => {
   try {
     const raw = await invokeRaw("ensure_wallpaper_thumbs");
     const result = WallpaperThumbsResultSchema.safeParse(raw);
@@ -302,10 +304,10 @@ export const ensureWallpaperThumbs = async (): Promise<WallpaperThumbsResult | n
     sidecarLogger.warn("ensure_wallpaper_thumbs returned unexpected shape", {
       issues: result.error.format(),
     });
-    return null;
+    return { generated: 0, total: 0 };
   } catch (err) {
     sidecarLogger.error("Failed to ensure wallpaper thumbnails", err);
-    return null;
+    return { generated: 0, total: 0 };
   }
 };
 

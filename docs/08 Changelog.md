@@ -8,6 +8,18 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — ensureWallpaperThumbs contract simplified to always resolve
+
+**Symptom:** Editor kept reporting `TS2339: Property 'generated' does not exist on type 'true'` at the thumbs-version bump even though runtime worked and CLI tsc was clean — a stale union in the editor's TS server kept resurrecting the old boolean-era signature.
+
+**Root cause:** The service's return type was a union (`Promise<WallpaperThumbsResult | null>`), left over from when it returned a plain boolean. Unions on this call site invited both the null-guard dance and editor-cache confusion.
+
+**Fix:** `ensureWallpaperThumbs` now **always resolves** `{ generated, total }` — failures and unexpected shapes resolve `{ generated: 0, total: 0 }` after logging in the service layer. Callers compare `thumbs.generated > 0` directly; no null branch, no boolean legacy. Contract note: this service never returns null anymore.
+
+**Verification:** typecheck ✓, 113 tests ✓, eslint ✓.
+
+**Regression hints:** If failure handling ever needs distinguishing from "nothing to do", reintroduce an explicit status field on the result object — never a bare boolean/null.
+
 ## 2026-08-23 — "Fetch new wallpaper now" left the settings app stale
 
 **Symptom:** The Fetch-now button changed the desktop wallpaper, terminal colors, everything external — but the settings app kept showing the old wallpaper in its hero preview (and old theme accents). Selecting a wallpaper from the gallery updated the app correctly.
