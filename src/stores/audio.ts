@@ -1,12 +1,12 @@
 import { atom } from "jotai";
-import { AudioInfoSchema, type AudioInfo } from "./schemas";
+import { AudioInfoSchema, type AudioInfo } from "../lib/schemas";
 import {
   getAudioDevices,
   setDefaultAudioDevice,
   setAudioDeviceVolume,
   testAudio,
-} from "./services";
-import { logger } from "./logger";
+} from "../lib/services";
+import { logger } from "../lib/logger";
 
 export const DEFAULT_AUDIO_INFO: AudioInfo = AudioInfoSchema.parse({});
 

@@ -2,7 +2,7 @@ import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Sidebar";
 import TitleBar from "./TitleBar";
-import { activePageAtom } from "@/stores/appAtoms";
+import { activePageAtom } from "@/stores";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import WallpaperPage from "@/pages/WallpaperPage";
 import AppearancePage from "@/pages/AppearancePage";

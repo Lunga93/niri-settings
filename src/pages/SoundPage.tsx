@@ -23,14 +23,14 @@ import {
   setOutputMutedAtom,
   setInputVolumeAtom,
   setInputMutedAtom,
-} from "@/lib/atoms";
+} from "@/stores";
 import {
   audioInfoAtom,
   audioLoadingAtom,
   refreshAudioDevicesAtom,
   setDefaultAudioDeviceAtom,
   testAudioAtom,
-} from "@/lib/audioAtoms";
+} from "@/stores";
 import type { AudioDevice } from "@/lib/schemas";
 
 const getDeviceIcon = (device: AudioDevice): typeof Volume2 => {

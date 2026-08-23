@@ -15,9 +15,9 @@ import {
   setOutputVolumeAtom,
   setOutputMutedAtom,
   setInputMutedAtom,
-} from "./atoms";
+} from "../settings";
 
-vi.mock("./services", () => ({
+vi.mock("@/lib/services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
   readSettings: vi.fn().mockResolvedValue(null),
   setGSetting: vi.fn().mockResolvedValue(true),
@@ -57,7 +57,7 @@ vi.mock("./services", () => ({
   getThemeColors: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("./sidecar", () => ({
+vi.mock("@/lib/ipc", () => ({
   execScript: vi.fn().mockResolvedValue(undefined),
 }));
 

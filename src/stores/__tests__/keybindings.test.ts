@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createStore } from "jotai";
-import {
-  keybindingsAtom,
-  bindingForAtom,
-  setKeybindingsAtom,
-  KEYBINDING_GROUPS,
-} from "@/stores/keybindingAtoms";
+import { keybindingsAtom, bindingForAtom, setKeybindingsAtom, KEYBINDING_GROUPS } from "@/stores";
 
 describe("keybindingsAtom", () => {
   let store: ReturnType<typeof createStore>;

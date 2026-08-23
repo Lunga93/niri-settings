@@ -8,6 +8,23 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Frontend split into layered folders (ipc / services / schemas / stores)
+
+**Symptom:** `src/lib/` was flat spaghetti: `services.ts` (426 lines) handled every domain (settings, niri config, displays, audio, wallpaper, theme, files, gsettings); state lived in two homes (`lib/*Atoms.ts` and `stores/`); transport, schemas, logging and logic shared one directory; tests sat beside sources.
+
+**Root cause:** No layer boundaries — the frontend equivalent of the sidecar monolith fixed earlier today.
+
+**Fix (package-by-feature, mirroring the Go sidecar layout):**
+- `src/lib/ipc/` — transport only: `client.ts` (invoke/invokeRaw/execScript), `errors.ts` (normalizeError). Dead `reloadQuickshell` removed.
+- `src/lib/services/` — one file per domain (`settings`, `niri`, `display`, `system`, `audio`, `theme`, `wallpaper`) with `index.ts` re-exporting, so `@/lib/services` imports keep working.
+- `src/lib/schemas/` — flat `schemas.ts` split into `errors/settings/wallpaper/display/audio/theme/keybindings` + `index.ts`.
+- `src/stores/` — single home for all Jotai state: `settings/theme/wallpaper/display/audio/app/keybindings` (was `lib/*Atoms.ts` + scattered stores files), unified behind `@/stores`. Pages/components now import state from one place.
+- Tests moved into per-concern `__tests__/` directories (`stores/__tests__/`, `lib/__tests__/`, `lib/schemas/__tests__/`).
+
+**Verification:** typecheck ✓, 113 vitest tests ✓, eslint ✓.
+
+**Regression hints:** Import errors after this change ⇒ old paths are gone (`@/lib/atoms|*Atoms` → `@/stores`, `@/lib/sidecar` → `@/lib/ipc`). Adding a service = new file in `lib/services/<domain>.ts` + export via its `index.ts`.
+
 ## 2026-08-23 — ensureWallpaperThumbs contract simplified to always resolve
 
 **Symptom:** Editor kept reporting `TS2339: Property 'generated' does not exist on type 'true'` at the thumbs-version bump even though runtime worked and CLI tsc was clean — a stale union in the editor's TS server kept resurrecting the old boolean-era signature.

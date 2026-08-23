@@ -1,16 +1,20 @@
 import { atom } from "jotai";
-import { WallpaperInfoSchema, type WallpaperInfo, type WallpaperItem } from "./schemas/wallpaper";
+import {
+  WallpaperInfoSchema,
+  type WallpaperInfo,
+  type WallpaperItem,
+} from "../lib/schemas/wallpaper";
 import {
   getWallpaperInfo,
   setWallpaper,
   getThemeColors,
   writeSettings,
   ensureWallpaperThumbs,
-} from "./services";
-import { pywalThemeAtom, applyThemeToDOM } from "./themeAtoms";
-import { settingsAtom, appearanceAtom } from "./atoms";
-import { execScript } from "./sidecar";
-import { logger } from "./logger";
+} from "../lib/services";
+import { pywalThemeAtom, applyThemeToDOM } from "./theme";
+import { settingsAtom, appearanceAtom } from "./settings";
+import { execScript } from "../lib/ipc";
+import { logger } from "../lib/logger";
 
 export const wallpaperAtom = atom((get) => get(settingsAtom).wallpaper);
 

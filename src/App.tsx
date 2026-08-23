@@ -1,9 +1,14 @@
+import {
+  appearanceAtom,
+  applyThemeToDOM,
+  loadSettingsAtom,
+  loadThemeColorsAtom,
+  pywalThemeAtom,
+} from "@/stores";
 import { useAtom, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { loadSettingsAtom, appearanceAtom } from "@/lib/atoms";
-import { loadThemeColorsAtom, pywalThemeAtom, applyThemeToDOM } from "@/lib/themeAtoms";
 
 const SettingsLoader = (): React.JSX.Element => {
   const loadSettings = useSetAtom(loadSettingsAtom);

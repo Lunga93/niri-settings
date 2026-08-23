@@ -11,7 +11,7 @@ import {
   Info,
   type LucideIcon,
 } from "lucide-react";
-import { activePageAtom, SIDEBAR_SECTIONS, type PageId } from "@/stores/appAtoms";
+import { activePageAtom, SIDEBAR_SECTIONS, type PageId } from "@/stores";
 import React from "react";
 
 const ICON_MAP: Record<string, LucideIcon> = {

@@ -21,11 +21,11 @@ import {
   thumbStatusAtom,
   markThumbStatusAtom,
   fetchNewWallpaperAtom,
-} from "./wallpaperAtoms";
-import * as services from "./services";
-import { execScript } from "./sidecar";
+} from "../wallpaper";
+import * as services from "@/lib/services";
+import { execScript } from "@/lib/ipc";
 
-vi.mock("./services", () => ({
+vi.mock("@/lib/services", () => ({
   writeSettings: vi.fn().mockResolvedValue(true),
   readSettings: vi.fn().mockResolvedValue(null),
   ensureWallpaperThumbs: vi.fn().mockResolvedValue({ generated: 0, total: 2 }),
@@ -65,7 +65,7 @@ vi.mock("./services", () => ({
   getThemeColors: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("./sidecar", () => ({
+vi.mock("@/lib/ipc", () => ({
   execScript: vi.fn().mockResolvedValue(undefined),
 }));
 

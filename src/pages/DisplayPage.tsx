@@ -13,7 +13,7 @@ import {
   setNightLightAtom,
   setNightLightTempAtom,
   setColorSchemeAtom,
-} from "@/lib/atoms";
+} from "@/stores";
 import {
   displayOutputsAtom,
   displayOutputsLoadingAtom,
@@ -24,7 +24,7 @@ import {
   updateOutputTransformAtom,
   updateOutputScaleAtom,
   saveDisplayLayoutAtom,
-} from "@/lib/displayAtoms";
+} from "@/stores";
 import type { DisplayOutput } from "@/lib/schemas";
 
 const SCALE_KEYS: readonly string[] = ["0.8", "1.0", "1.25", "1.5", "2.0"];

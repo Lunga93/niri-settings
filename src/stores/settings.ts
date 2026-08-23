@@ -8,7 +8,7 @@ import {
   type SoundSettings,
 } from "@/lib/schemas";
 import { writeSettings, readSettings, setGSetting } from "@/lib/services";
-import { execScript } from "@/lib/sidecar";
+import { execScript } from "@/lib/ipc";
 import { logger, sidecarLogger } from "@/lib/logger";
 
 // ── Default state from Zod schema ──

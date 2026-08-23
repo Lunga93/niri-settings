@@ -35,9 +35,9 @@ import {
   thumbStatusAtom,
   markThumbStatusAtom,
   fetchNewWallpaperAtom,
-} from "@/lib/wallpaperAtoms";
+} from "@/stores";
 import type { WallpaperItem } from "@/lib/schemas/wallpaper";
-import { execScript } from "@/lib/sidecar";
+import { execScript } from "@/lib/ipc";
 
 interface MoodConfig {
   readonly id: string;

@@ -1,8 +1,8 @@
 import { atom } from "jotai";
-import { PywalThemeSchema, type PywalTheme, type AppearanceSettings } from "./schemas";
-import { getThemeColors } from "./services";
-import { logger } from "./logger";
-import { appearanceAtom } from "./atoms";
+import { PywalThemeSchema, type PywalTheme, type AppearanceSettings } from "../lib/schemas";
+import { getThemeColors } from "../lib/services";
+import { logger } from "../lib/logger";
+import { appearanceAtom } from "./settings";
 
 export const DEFAULT_PYWAL_THEME: PywalTheme = PywalThemeSchema.parse({});
 

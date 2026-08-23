@@ -12,12 +12,12 @@ import {
   AppErrorSchema,
   parseSettings,
   parseDisplayOutputs,
-} from "./schemas";
+} from "../index";
 import {
   WallpaperItemSchema,
   WallpaperInfoSchema,
   WallpaperThumbsResultSchema,
-} from "./schemas/wallpaper";
+} from "../wallpaper";
 
 // ── SettingsDataSchema ──
 

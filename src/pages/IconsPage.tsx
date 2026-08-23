@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Shapes, MousePointer, CheckCircle2 } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
 import SettingsRow from "@/components/settings/SettingsRow";
-import { iconsAtom, setIconThemeAtom, setCursorThemeAtom, setCursorSizeAtom } from "@/lib/atoms";
+import { iconsAtom, setIconThemeAtom, setCursorThemeAtom, setCursorSizeAtom } from "@/stores";
 import React from "react";
 
 const ICON_THEMES = [

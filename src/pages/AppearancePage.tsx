@@ -9,8 +9,8 @@ import {
   setColorSchemeAtom,
   setAccentColorAtom,
   setAccentModeAtom,
-} from "@/lib/atoms";
-import { pywalThemeAtom, themeLoadingAtom, loadThemeColorsAtom } from "@/lib/themeAtoms";
+} from "@/stores";
+import { pywalThemeAtom, themeLoadingAtom, loadThemeColorsAtom } from "@/stores";
 
 const CURATED_ACCENTS = [
   "#0a84ff", // Blue

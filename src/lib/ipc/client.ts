@@ -1,37 +1,6 @@
-import { AppErrorSchema, type AppError } from "./schemas";
-import { sidecarLogger } from "./logger";
-
-/**
- * Normalizes raw IPC or sidecar errors into typed AppError instances.
- */
-export const normalizeError = (err: unknown): AppError => {
-  if (err && typeof err === "object" && "code" in err && "message" in err) {
-    const parsed = AppErrorSchema.safeParse(err);
-    if (parsed.success) {
-      return parsed.data;
-    }
-  }
-
-  if (typeof err === "string") {
-    return {
-      code: "IPC_ERROR",
-      message: err,
-    };
-  }
-
-  if (err instanceof Error) {
-    return {
-      code: "UNKNOWN_ERROR",
-      message: err.message,
-      details: err.stack,
-    };
-  }
-
-  return {
-    code: "UNKNOWN_ERROR",
-    message: String(err),
-  };
-};
+import type { AppError } from "../schemas";
+import { sidecarLogger } from "../logger";
+import { normalizeError } from "./errors";
 
 interface ZodSchema<T> {
   safeParse: (data: unknown) => { success: true; data: T } | { success: false; error?: unknown };
@@ -119,12 +88,4 @@ export const execScript = async (script: string): Promise<void> => {
     sidecarLogger.error(`[SCRIPT] ✖ execScript failed (${elapsed}ms): ${script}`, err);
     throw err;
   }
-};
-
-/**
- * Reloads the quickshell daemon.
- */
-export const reloadQuickshell = async (): Promise<void> => {
-  sidecarLogger.info("Reloading quickshell");
-  await execScript("qs ipc call settings reload");
 };

@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, RotateCcw, FileText } from "lucide-react";
 import SettingsGroup from "@/components/settings/SettingsGroup";
-import { keybindingsAtom, KEYBINDING_GROUPS, actionsMatch } from "@/stores/keybindingAtoms";
+import { keybindingsAtom, KEYBINDING_GROUPS, actionsMatch } from "@/stores";
 import {
   readKeybindings,
   writeKeybinding,

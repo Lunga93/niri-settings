@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createStore } from "jotai";
-import { activePageAtom, SIDEBAR_SECTIONS, type PageId } from "./appAtoms";
+import { activePageAtom, SIDEBAR_SECTIONS, type PageId } from "../app";
 
 describe("activePageAtom", () => {
   let store: ReturnType<typeof createStore>;
