@@ -8,6 +8,24 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Night-light freeze, honest light mode, real network status
+
+**Symptoms:** Toggling night light froze every backend feature; clicking Dark/Light left the app black while labels flipped; Network page always claimed ethernet was "Unplugged"; a stale sidecar made the new capability banners lie about missing scripts on first boot.
+
+**Root causes:**
+- `ExecScript` used `CombinedOutput()`: backgrounded children (wlsunset from the night-light script) inherit the output pipe forever, so `cmd.Wait()` never returned and the single-threaded sidecar command loop wedged permanently — every later click queued behind it. This is also why Light mode never persisted: the appearance chain's `write_settings` hung before reaching disk.
+- Light mode reused pywal's **wallpaper background** for the window surface (`window: bg`), so a dark wallpaper kept the app black; `--color-surface-content` was missing entirely from the DOM token list, pinning the content pane dark.
+- The Network page was static decoration — no atoms, no sidecar calls.
+
+**Fixes:**
+- **Sidecar `ExecScript` hardening:** file-backed stdout/stderr (daemons inheriting fds are harmless), process groups (`Setpgid`) and a 20 s timeout that SIGKILLs runaway foreground children. Tests cover failing scripts, backgrounded daemons and timeouts.
+- **Light mode is real:** window/content/sidebar/titlebar surfaces come from the fixed light family when `color_scheme=light` regardless of wallpaper darkness; `data-theme="light|dark"` lands on `<html>` for `color-scheme`; content pane is now themed.
+- **Single theme toggle:** removed DisplayPage's duplicate Color Scheme control — Appearance owns Dark/Light.
+- **Network page live data:** new sidecar `get_network_status` merges `nmcli device status` with `ip -j addr`, filters docker/veth/loopback noise, and reports per-interface state + IPs. Wi-Fi/Ethernet rows reflect reality (ethernet now correctly reads connected with its address).
+- Capability banners only appear after a successful probe; a stale sidecar binary during development can briefly show false negatives until reload.
+
+**Regression hints:** Backend freeze after running a script ⇒ check `ExecScript` timeout path (`system/commands_test.go`). Wrong interface list ⇒ `isVirtualInterface` prefix list in `system/network.go`. Light mode regressing ⇒ `deriveThemeTokens` surface branches in `stores/theme.ts`.
+
 ## 2026-08-23 — Cursor control is real; quickshell Icons page deprecated
 
 **Symptom:** Icon/cursor changes wrote gsettings correctly (verified: `Cosmic`/`Pop` in both `~/.config/dotfiles/settings.json` and gsettings) yet nothing visibly changed. Root causes: no xsettings daemon on niri ⇒ running GTK apps never repaint; the quickshell bar renders hardcoded text glyphs and ignores icon themes entirely; niri's `config.kdl` had no `cursor` block so cursor-theme barely reached anything; and a second competing UI — quickshell's own IconsPage with hardcoded presets (Tela/WhiteSur/Numix…) — could stomp values written by this app. Tray icons rendered as generic placeholders because Qt had **no icon theme configured at all** (falls back to hicolor).

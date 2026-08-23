@@ -2,6 +2,7 @@ import {
   appearanceAtom,
   applyThemeToDOM,
   loadCapabilitiesAtom,
+  loadNetworkStatusAtom,
   loadSettingsAtom,
   loadThemeColorsAtom,
   pywalThemeAtom,
@@ -15,6 +16,7 @@ const SettingsLoader = (): React.JSX.Element => {
   const loadSettings = useSetAtom(loadSettingsAtom);
   const loadTheme = useSetAtom(loadThemeColorsAtom);
   const loadCaps = useSetAtom(loadCapabilitiesAtom);
+  const loadNetwork = useSetAtom(loadNetworkStatusAtom);
   const [appearance] = useAtom(appearanceAtom);
   const [pywalTheme] = useAtom(pywalThemeAtom);
 
@@ -22,7 +24,8 @@ const SettingsLoader = (): React.JSX.Element => {
     void loadSettings();
     void loadTheme();
     void loadCaps();
-  }, [loadSettings, loadTheme, loadCaps]);
+    void loadNetwork();
+  }, [loadSettings, loadTheme, loadCaps, loadNetwork]);
 
   useEffect(() => {
     applyThemeToDOM(pywalTheme, appearance);

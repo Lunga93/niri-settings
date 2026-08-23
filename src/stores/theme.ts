@@ -52,6 +52,7 @@ export interface ThemeTokens {
   window: string;
   sidebar: string;
   titlebar: string;
+  content: string;
   elevated: string;
   hover: string;
   active: string;
@@ -78,11 +79,15 @@ export const deriveThemeTokens = (
     accent = appearance.manual_primary;
   }
 
+  // Light mode must NOT reuse pywal's wallpaper background for large
+  // surfaces — a dark wallpaper would keep the whole app black. Surfaces
+  // come from the fixed light family; dark mode keeps the pywal bg.
   return {
     isLight,
-    window: bg,
+    window: isLight ? "#f5ede0" : bg,
     sidebar: isLight ? "#ede3d4" : adjustBrightness(bg, -8),
     titlebar: isLight ? "#e5dbcc" : adjustBrightness(bg, 5),
+    content: isLight ? "#f7f0e3" : bg,
     elevated: isLight ? "#ffffff" : adjustBrightness(bg, 10),
     hover: hexToRgba(fg, 0.08),
     active: hexToRgba(fg, 0.14),
@@ -99,6 +104,7 @@ const TOKEN_VAR_LIST: ReadonlyArray<[keyof ThemeTokens, string]> = [
   ["window", "--color-surface-window"],
   ["sidebar", "--color-surface-sidebar"],
   ["titlebar", "--color-surface-titlebar"],
+  ["content", "--color-surface-content"],
   ["elevated", "--color-surface-elevated"],
   ["hover", "--color-surface-hover"],
   ["active", "--color-surface-active"],
@@ -113,6 +119,7 @@ const TOKEN_VAR_LIST: ReadonlyArray<[keyof ThemeTokens, string]> = [
 export const applyTokensToDOM = (tokens: ThemeTokens): void => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
+  root.setAttribute("data-theme", tokens.isLight ? "light" : "dark");
   for (const [key, cssVar] of TOKEN_VAR_LIST) {
     root.style.setProperty(cssVar, String(tokens[key]));
   }

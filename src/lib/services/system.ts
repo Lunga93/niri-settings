@@ -4,8 +4,10 @@ import {
   CAPABILITIES_FALLBACK,
   CapabilitiesSchema,
   DesktopThemesSchema,
+  NetworkStatusSchema,
   type Capabilities,
   type DesktopThemes,
+  type NetworkStatus,
 } from "../schemas";
 
 // Probes the host for optional integrations (niri IPC, helper scripts,
@@ -23,6 +25,21 @@ export const getCapabilities = async (): Promise<Capabilities> => {
   } catch (err) {
     sidecarLogger.error("Failed to probe capabilities", err);
     return CAPABILITIES_FALLBACK;
+  }
+};
+
+export const getNetworkStatus = async (): Promise<NetworkStatus | null> => {
+  try {
+    const raw = await invokeRaw("get_network_status", {});
+    const parsed = NetworkStatusSchema.safeParse(raw);
+    if (!parsed.success) {
+      sidecarLogger.error("get_network_status: unexpected payload", parsed.error);
+      return null;
+    }
+    return parsed.data;
+  } catch (err) {
+    sidecarLogger.error("Failed to read network status", err);
+    return null;
   }
 };
 

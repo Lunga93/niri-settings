@@ -8,11 +8,9 @@ import PillSelector from "@/components/settings/PillSelector";
 import SettingsSlider from "@/components/settings/SettingsSlider";
 import {
   displayAtom,
-  appearanceAtom,
   setDisplayScaleAtom,
   setNightLightAtom,
   setNightLightTempAtom,
-  setColorSchemeAtom,
 } from "@/stores";
 import {
   displayOutputsAtom,
@@ -61,11 +59,9 @@ const ToggleSwitch = ({ checked, onToggle }: ToggleSwitchProps): React.JSX.Eleme
 
 const DisplayPage = (): React.JSX.Element => {
   const [display] = useAtom(displayAtom);
-  const [appearance] = useAtom(appearanceAtom);
   const setScale = useSetAtom(setDisplayScaleAtom);
   const setNightLight = useSetAtom(setNightLightAtom);
   const setNightLightTemp = useSetAtom(setNightLightTempAtom);
-  const setColorScheme = useSetAtom(setColorSchemeAtom);
 
   const [outputs] = useAtom(displayOutputsAtom);
   const caps = useAtomValue(capabilitiesAtom);
@@ -536,21 +532,6 @@ const DisplayPage = (): React.JSX.Element => {
                   onChange={setNightLightTemp}
                 />
               </div>
-            </SettingsRow>
-          </SettingsGroup>
-
-          <SettingsGroup header="Color Scheme" accent="#64d2ff">
-            <SettingsRow
-              title="Appearance mode"
-              description="Applies to the shell bar, popouts, settings, and all GTK/Qt apps."
-            >
-              <PillSelector
-                options={["Dark", "Light"]}
-                currentIndex={appearance.color_scheme === "light" ? 1 : 0}
-                onSelected={(i): void => {
-                  void setColorScheme(i === 1 ? "light" : "dark");
-                }}
-              />
             </SettingsRow>
           </SettingsGroup>
         </div>

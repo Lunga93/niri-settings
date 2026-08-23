@@ -25,3 +25,20 @@ export const CAPABILITIES_FALLBACK: Capabilities = {
   night_light: false,
   pywal_cache: false,
 };
+
+// Live host network snapshot from the sidecar (nmcli + ip).
+export const NetworkInterfaceSchema = z.object({
+  name: z.string(),
+  kind: z.enum(["ethernet", "wifi", "other"]),
+  connected: z.boolean(),
+  state: z.string(),
+  ips: z.array(z.string()),
+});
+
+export const NetworkStatusSchema = z.object({
+  nm_available: z.boolean(),
+  interfaces: z.array(NetworkInterfaceSchema),
+});
+
+export type NetworkInterface = z.infer<typeof NetworkInterfaceSchema>;
+export type NetworkStatus = z.infer<typeof NetworkStatusSchema>;

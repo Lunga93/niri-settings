@@ -175,8 +175,10 @@ describe("appearance write atoms", () => {
     // Minimal document stub — the suite runs in node env and we only need to
     // observe CSS custom property writes on <html>.
     const vars = new Map<string, string>();
+    const attrs = new Map<string, string>();
     vi.stubGlobal("document", {
       documentElement: {
+        setAttribute: (k: string, v: string): void => void attrs.set(k, v),
         style: {
           setProperty: (k: string, v: string): void => void vars.set(k, v),
           getPropertyValue: (k: string): string => vars.get(k) ?? "",
@@ -187,6 +189,7 @@ describe("appearance write atoms", () => {
       await store.set(setColorSchemeAtom, "light");
       expect(vars.get("--color-surface-sidebar")).toBe("#ede3d4");
       expect(vars.get("--color-surface-elevated")).toBe("#ffffff");
+      expect(attrs.get("data-theme")).toBe("light");
     } finally {
       vi.unstubAllGlobals();
     }

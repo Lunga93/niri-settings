@@ -45,6 +45,8 @@ var registry = map[string]protocol.Handler{
 	"set_quickshell_icon_theme": system.HandleSetQuickshellIconTheme,
 
 	"get_capabilities": system.HandleGetCapabilities,
+
+	"get_network_status": system.HandleGetNetworkStatus,
 	// settings
 	"read_settings":  settings.HandleRead,
 	"write_settings": settings.HandleWrite,
