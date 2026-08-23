@@ -22,6 +22,22 @@ export const wallpaperApplyingAtom = atom<boolean>(false);
 export const wallpaperApplyErrorAtom = atom<string | null>(null);
 export const selectedWallpaperPathAtom = atom<string | null>(null);
 export const wallpaperThumbsVersionAtom = atom<number>(0);
+
+/**
+ * Confirmed load state per thumbnail URL ("loaded" | "error"). Global because a
+ * confirmed result must survive card unmounts/remounts: <img onLoad> can fire
+ * before React attaches its listener when the webview serves a cached image,
+ * which would otherwise leave per-card state stuck at "loading" forever.
+ */
+export type ThumbLoadStatus = "loaded" | "error";
+export const thumbStatusAtom = atom<Record<string, ThumbLoadStatus>>({});
+export const markThumbStatusAtom = atom(
+  null,
+  (get, set, params: { src: string; status: ThumbLoadStatus }) => {
+    if (get(thumbStatusAtom)[params.src] === params.status) return;
+    set(thumbStatusAtom, { ...get(thumbStatusAtom), [params.src]: params.status });
+  },
+);
 /**
  * How many gallery cards are revealed. Stored in an atom (not component state)
  * so navigating away and back does not collapse the grid back to the first page.
@@ -87,38 +103,57 @@ export const filteredWallpapersAtom = atom<WallpaperItem[]>((get) => {
   );
 });
 
+/**
+ * Shared in-flight promise so concurrent callers (page mount, manual refresh
+ * button, React StrictMode's double-invoked effects) trigger exactly one
+ * sidecar cycle instead of racing duplicates.
+ */
+let inflightRefresh: Promise<void> | null = null;
+
 export const refreshWallpaperInfoAtom = atom(null, async (_get, set) => {
-  set(wallpaperInfoLoadingAtom, true);
-  set(wallpaperInfoErrorAtom, null);
-  try {
-    const info = await getWallpaperInfo();
-    if (info) {
-      set(wallpaperInfoAtom, info);
-      set(wallpaperInfoErrorAtom, null);
-      logger.info(
-        `Wallpaper info loaded: ${info.total_scanned} wallpapers scanned, current: ${info.current_wallpaper || "none"}`,
-      );
-      try {
-        const result = await ensureWallpaperThumbs();
-        // Only bust card image caches when thumbnails were actually
-        // (re)generated; otherwise revisiting the page would flash the whole
-        // grid back to skeletons for no reason.
-        if (result && result.generated > 0) {
-          set(wallpaperThumbsVersionAtom, (v) => v + 1);
+  if (inflightRefresh) return inflightRefresh;
+  const run = (async () => {
+    set(wallpaperInfoLoadingAtom, true);
+    set(wallpaperInfoErrorAtom, null);
+    try {
+      const info = await getWallpaperInfo();
+      if (info) {
+        set(wallpaperInfoAtom, info);
+        set(wallpaperInfoErrorAtom, null);
+        logger.info(
+          `Wallpaper info loaded: ${info.total_scanned} wallpapers scanned, current: ${info.current_wallpaper || "none"}`,
+        );
+        try {
+          // Resolves { generated, total } | null (not a boolean): generated is
+          // the number of thumbnails the sidecar had to (re)create this run.
+          const result = await ensureWallpaperThumbs();
+          // Only bust card image caches when thumbnails were actually
+          // (re)generated; otherwise revisiting the page would flash the whole
+          // grid back to skeletons for no reason.
+          if (result && result.generated > 0) {
+            logger.info(`Thumbnails refreshed: ${result.generated} generated of ${result.total}`);
+            set(wallpaperThumbsVersionAtom, (v) => v + 1);
+          }
+        } catch {
+          // ensureWallpaperThumbs already logged via service layer; keep the
+          // info payload that did load usable.
         }
-      } catch {
-        // ensureWallpaperThumbs already logged via service layer; keep the
-        // info payload that did load usable.
+      } else {
+        set(wallpaperInfoErrorAtom, "Unable to retrieve wallpapers from sidecar backend.");
       }
-    } else {
-      set(wallpaperInfoErrorAtom, "Unable to retrieve wallpapers from sidecar backend.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error("Failed to refresh wallpaper info", err);
+      set(wallpaperInfoErrorAtom, `Failed to load wallpapers: ${msg}`);
+    } finally {
+      set(wallpaperInfoLoadingAtom, false);
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error("Failed to refresh wallpaper info", err);
-    set(wallpaperInfoErrorAtom, `Failed to load wallpapers: ${msg}`);
+  })();
+  inflightRefresh = run;
+  try {
+    await run;
   } finally {
-    set(wallpaperInfoLoadingAtom, false);
+    if (inflightRefresh === run) inflightRefresh = null;
   }
 });
 

@@ -18,6 +18,8 @@ import {
   toggleWallpaperSourceAtom,
   wallpaperThumbsVersionAtom,
   galleryVisibleCountAtom,
+  thumbStatusAtom,
+  markThumbStatusAtom,
 } from "./wallpaperAtoms";
 import * as services from "./services";
 
@@ -207,5 +209,38 @@ describe("wallpaperAtoms", () => {
   it("applyWallpaperAtom handles false or empty path", async () => {
     const result = await store.set(applyWallpaperAtom, "");
     expect(result).toBe(false);
+  });
+
+  it("refreshWallpaperInfoAtom dedupes concurrent invocations into one sidecar cycle", async () => {
+    // Simulate the StrictMode double-mount: two concurrent callers.
+    let release!: () => void;
+    const pending = new Promise<null>((resolve) => {
+      release = () => resolve(null);
+    });
+    vi.mocked(services.getWallpaperInfo).mockImplementationOnce(() => pending);
+
+    const callsBefore = vi.mocked(services.getWallpaperInfo).mock.calls.length;
+    const first = store.set(refreshWallpaperInfoAtom);
+    const second = store.set(refreshWallpaperInfoAtom);
+
+    release();
+    await Promise.all([first, second]);
+
+    expect(vi.mocked(services.getWallpaperInfo).mock.calls).toHaveLength(callsBefore + 1);
+    expect(store.get(wallpaperInfoLoadingAtom)).toBe(false);
+  });
+
+  it("markThumbStatusAtom records load state and ignores duplicate marks", () => {
+    expect(store.get(thumbStatusAtom)["asset://thumb.jpg"]).toBeUndefined();
+
+    store.set(markThumbStatusAtom, { src: "asset://thumb.jpg", status: "loaded" });
+    expect(store.get(thumbStatusAtom)["asset://thumb.jpg"]).toBe("loaded");
+
+    store.set(markThumbStatusAtom, { src: "asset://thumb.jpg", status: "loaded" });
+    expect(store.get(thumbStatusAtom)["asset://thumb.jpg"]).toBe("loaded");
+
+    store.set(markThumbStatusAtom, { src: "asset://broken.jpg", status: "error" });
+    expect(store.get(thumbStatusAtom)["asset://broken.jpg"]).toBe("error");
+    expect(store.get(thumbStatusAtom)["asset://thumb.jpg"]).toBe("loaded");
   });
 });

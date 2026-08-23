@@ -32,6 +32,8 @@ import {
   applyWallpaperAtom,
   wallpaperThumbsVersionAtom,
   galleryVisibleCountAtom,
+  thumbStatusAtom,
+  markThumbStatusAtom,
 } from "@/lib/wallpaperAtoms";
 import type { WallpaperItem } from "@/lib/schemas/wallpaper";
 import { execScript } from "@/lib/sidecar";
@@ -157,15 +159,28 @@ const WallpaperCard: React.FC<WallpaperCardProps> = ({
   thumbVersion,
   onSelect,
 }) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const markThumbStatus = useSetAtom(markThumbStatusAtom);
+  const statusBySrc = useAtomValue(thumbStatusAtom);
 
   const imageUrl = resolveWallpaperUrl(item.thumbnail);
+  // Version param makes every thumbs-version bump a distinct URL so the
+  // webview genuinely refetches (and retries previously failed) thumbnails.
+  const versionedUrl = thumbVersion > 0 ? `${imageUrl}?v=${thumbVersion}` : imageUrl;
 
+  // Cached images can finish loading before React attaches onLoad, so also
+  // verify <img>.complete after render; global atom survives remounts.
+  const imgRef = useRef<HTMLImageElement | null>(null);
   useEffect(() => {
-    setImageError(false);
-    setImageLoaded(false);
-  }, [imageUrl, thumbVersion]);
+    const el = imgRef.current;
+    if (!el || !el.complete) return;
+    markThumbStatus({
+      src: versionedUrl,
+      status: el.naturalWidth > 0 ? "loaded" : "error",
+    });
+  }, [versionedUrl, markThumbStatus]);
+
+  const imageLoaded = statusBySrc[versionedUrl] === "loaded";
+  const imageError = statusBySrc[versionedUrl] === "error";
 
   return (
     <motion.div
@@ -197,12 +212,13 @@ const WallpaperCard: React.FC<WallpaperCardProps> = ({
         {/* Thumbnail Image */}
         {!imageError && imageUrl ? (
           <img
-            src={imageUrl}
+            ref={imgRef}
+            src={versionedUrl}
             alt={item.name || item.filename}
             loading="lazy"
             decoding="async"
-            onLoad={(): void => setImageLoaded(true)}
-            onError={(): void => setImageError(true)}
+            onLoad={(): void => void markThumbStatus({ src: versionedUrl, status: "loaded" })}
+            onError={(): void => void markThumbStatus({ src: versionedUrl, status: "error" })}
             className={`
               h-full w-full object-cover transition-all duration-300 group-hover:scale-105
               ${imageLoaded ? "opacity-100" : "opacity-0"}

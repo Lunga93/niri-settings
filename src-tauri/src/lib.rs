@@ -141,11 +141,34 @@ fn sidecar_command(
     })?;
 
     if response.ok {
+        let data = response.data.unwrap_or(serde_json::Value::Null);
+        // Compact per-command summaries so terminal logs actually explain
+        // what the sidecar returned (payload itself is forwarded to JS).
+        let summary = match command.as_str() {
+            "ensure_wallpaper_thumbs" => data
+                .get("generated")
+                .and_then(|g| g.as_i64())
+                .map(|g| format!("generated {}/{}", g, data.get("total").map(|t| t.to_string()).unwrap_or_else(|| "?".into())))
+                .unwrap_or_default(),
+            "get_wallpaper_info" => format!(
+                "scanned {}, listed {}",
+                data.get("total_scanned").and_then(|v| v.as_i64()).unwrap_or(-1),
+                data.get("wallpapers").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0)
+            ),
+            _ => String::new(),
+        };
+        let size_kb = result.stdout.len() as f64 / 1024.0;
+        let summary_suffix = if summary.is_empty() {
+            format!("{:.1} kB out", size_kb)
+        } else {
+            format!("{} ({:.1} kB out)", summary, size_kb)
+        };
         eprintln!(
-            "[tauri:sidecar] Command '{command}' succeeded in {}ms",
-            elapsed.as_millis()
+            "[tauri:sidecar] Command '{command}' succeeded in {}ms: {}",
+            elapsed.as_millis(),
+            summary_suffix
         );
-        Ok(response.data.unwrap_or(serde_json::Value::Null))
+        Ok(data)
     } else {
         let err_msg = response
             .error

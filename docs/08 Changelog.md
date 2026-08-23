@@ -8,6 +8,22 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — Thumbnails invisible on first page open until a mood switch
+
+**Symptom:** Opening the wallpapers page showed skeleton placeholders instead of thumbnails; selecting a different mood made them appear. Terminal log showed every command executing twice (`get_wallpaper_info` ×2, `ensure_wallpaper_thumbs` ×2) on page open, which gave no clue why images stayed hidden.
+
+**Root cause:** Two stacked issues. (1) Card readiness relied solely on `<img onLoad>`; when the webview serves an already-cached image the load event can fire before React attaches its listener, so `imageLoaded` stayed `false` and the image remained at `opacity-0`. Mood switches reconciled the grid enough to recreate the `<img>` nodes, letting the event land on the second attempt. Yesterday's removal of the unconditional thumbs-version bump had been accidentally masking this with a forced second load pass. (2) React StrictMode double-invokes the page's mount effect, launching two concurrent refresh cycles against the sidecar (the doubled logs).
+
+**Fix:**
+- New global `thumbStatusAtom`/`markThumbStatusAtom` in `src/lib/wallpaperAtoms.ts` replace per-card `useState`: confirmed loaded/error state survives remounts and is keyed by versioned URL.
+- Card in `src/pages/WallpaperPage.tsx` verifies `img.complete && naturalWidth > 0` in an effect (covers missed events) and appends `?v=<thumbsVersion>` to asset URLs so a version bump genuinely refetches/retries instead of just resetting flags.
+- `refreshWallpaperInfoAtom` shares one module-level in-flight promise; concurrent callers (StrictMode double-mount, manual refresh button) join the running cycle.
+- Sidecar success log line in `src-tauri/src/lib.rs` now includes payload size plus summaries (`generated N/M` for ensure_wallpaper_thumbs, `scanned/listed` for get_wallpaper_info).
+
+**Verification:** typecheck ✓, 111 vitest tests ✓ (new: concurrent-refresh dedupe, thumb status marking), eslint ✓, cargo check ✓.
+
+**Regression hints:** Stuck skeletons after this change ⇒ check `thumbStatusAtom` keys match the exact `versionedUrl` used by `<img src>`. Duplicate sidecar cycles returning ⇒ new caller bypassing `refreshWallpaperInfoAtom`.
+
 ## 2026-08-23 — Sidecar monolith split into domain packages (Go standards pass)
 
 **Symptom:** `sidecar/main.go` had grown to 744 lines holding wire types, arg parsing, generic file ops, and the whole wallpaper domain — every feature meant editing the same file; untestable outside package main.
