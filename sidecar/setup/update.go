@@ -23,7 +23,7 @@ const (
 	updateStaging = ".local/share/niri-settings/update"
 )
 
-var currentVersion = "0.1.1" // set at build time via -ldflags if desired
+var currentVersion = "0.1.2" // set at build time via -ldflags if desired
 
 type UpdateInfo struct {
 	Available bool   `json:"available"`
