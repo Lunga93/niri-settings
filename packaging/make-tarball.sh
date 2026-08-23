@@ -19,16 +19,18 @@ cp packaging/install.sh packaging/uninstall.sh "$STAGE/"
 cat > "$STAGE/README.md" <<EOF
 # niri-settings $VERSION
 
-Portable build. Install (user-local, no root):
+Part of the Manatee Desktop experience for the niri Wayland compositor.
 
-    ./install.sh          # installs to ~/.local
+Install (user-local, no root):
+
+    ./install.sh              # installs to ~/.local
     ./install.sh /usr/local   # or system-wide
 
 Then launch "Niri Settings" from your app launcher, or run \`niri-settings\`.
 
 Uninstall:
 
-    ./uninstall.sh        # pass the same PREFIX you installed with
+    ./uninstall.sh            # pass the same PREFIX you installed with
 EOF
 
 tar -czf "$OUT" -C "$STAGE" .

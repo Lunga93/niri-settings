@@ -23,7 +23,7 @@ cat > "$DATA_DIR/niri-settings.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Niri Settings
-Comment=Settings companion for the niri scrollable-tiling Wayland compositor
+Comment=Settings companion for the niri Wayland compositor — part of Manatee Desktop
 Exec=$BIN_DIR/niri-settings
 Icon=niri-settings
 Terminal=false

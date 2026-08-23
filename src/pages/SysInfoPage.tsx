@@ -57,9 +57,7 @@ const SysInfoPage = (): React.JSX.Element => (
         ))}
 
         <div className="rounded-2xl border border-border bg-surface-elevated/50 p-4 text-center">
-          <p className="text-[11px] text-text-muted">
-            Niri Settings Control Center • Powered by Pywal Theme Engine & WirePlumber
-          </p>
+          <p className="text-[11px] text-text-muted">Niri Settings • Part of Manatee Desktop</p>
         </div>
       </div>
     </motion.div>

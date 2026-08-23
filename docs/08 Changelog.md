@@ -8,15 +8,15 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
-## 2026-08-23 — Setup wizard page, service layer cleanup, sidecar middleware
+## 2026-08-23 — v0.1.1 Setup wizard, tier detection fix, sidecar cleanup
 
-**Setup gets its own page with a progress stepper.** Tier 1 and Tier 2 are no longer scattered sections on System Info — they live in a dedicated **"Get Started"** sidebar entry under Personalization, presented as a three-step wizard (Bare niri → Appearance Helpers → Full Desktop Suite) with visual progress indicators. Tier 2 is grayed out until Tier 1 is complete, making the upgrade path obvious at a glance. System Info returns to being a clean, read-only status dashboard.
+**New "Get Started" page** with a three-step progress stepper (Bare niri → Appearance Helpers → Full Desktop Suite). Tier 1 and Tier 2 extracted from System Info into their own navigable page.
 
-**Frontend service layer simplified.** All `invokeRaw` + manual `safeParse` + catch boilerplate replaced with a single `callSidecar<T>(command, schema, args)` helper that wraps the existing `invokeSidecar` with null-on-error semantics. Five service files (`setup`, `apps`, `system`, `theme`, `ipc/client`) touched; net reduction of ~80 lines of repetitive code.
+**Tier detection rewritten.** Scans `~/.config` for symlinks resolving into the dotfiles checkout (`scanStowed`), replacing the broken `discoverStowDirs` which miscounted non-stow directories.
 
-**Sidecar `WithHome` middleware.** The repeated `HomeDir("HOME_ERROR") + early-return` pattern across all handlers replaced with a `protocol.WithHome(fn)` wrapper. Five setup handlers refactored; the middleware is now the standard pattern for any future handler that needs the user's home directory.
+**Sidecar refactors.** `callSidecar<T>` generic helper, `protocol.WithHome` middleware, schemas consolidated in `setup.ts`.
 
-**Schema placement corrected.** `HelperScriptResultSchema` and `InstallHelpersResponseSchema` moved from `apps.ts` to `setup.ts` where they belong, keeping each domain's schemas self-contained.
+**Part of the Manatee Desktop experience.** niri-settings is the settings companion for the niri Wayland compositor, designed to work seamlessly with the Manatee Desktop dotfiles suite.
 
 ## 2026-08-23 — Tier 2: adopt the full desktop with a safety net
 

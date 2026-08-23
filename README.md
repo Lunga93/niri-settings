@@ -1,6 +1,6 @@
 # niri-settings
 
-A settings application for the [niri](https://github.com/YaLTeR/niri) Wayland compositor and its quickshell desktop shell — wallpaper, appearance, icons, display, keybindings, network, sound.
+Settings companion for the [niri](https://github.com/YaLTeR/niri) Wayland compositor. Part of the [Manatee Desktop](https://github.com/Lunga93/manatee-desktop) experience — wallpaper, appearance, icons, display, keybindings, network, sound, and one-click desktop setup.
 
 ## Stack
 
