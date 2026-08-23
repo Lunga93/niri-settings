@@ -62,6 +62,19 @@ through the debug (`binaries/`) and release sidecars and diff — only `wallpape
 seed names may differ (randomized per invocation by design). Then launch each artifact once
 and confirm `[tauri:sidecar] Command '...' succeeded` log lines.
 
+## 1c. Automated releases (CI)
+
+`.github/workflows/release.yml` builds all four artifacts on GitHub Actions and attaches them
+to a release:
+
+- **Tag push** (`git tag v0.1.1 && git push origin v0.1.1`) → gates → sidecar + smoke test →
+  AppImage/deb/rpm + tarball → GitHub Release with auto-generated notes.
+  The tag must equal the version in `tauri.conf.json` or the run fails fast.
+- **Manual dispatch** (`gh workflow run release`) → same build, artifacts uploaded to the
+  workflow run instead of a release.
+
+First CI run compiles the full Rust dep tree (~5–10 min); later runs reuse `rust-cache`.
+
 ## 2. Sidecar bundling — wired via `externalBin` (configured 2026-08-22)
 
 `tauri.conf.json` now contains:

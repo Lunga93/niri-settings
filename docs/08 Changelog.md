@@ -8,6 +8,12 @@ Dated record of shipped fixes and behavior changes: what broke, why, how it was 
 
 Entries are newest-first. Pair every entry with a git commit (conventional commits) so code and rationale stay linked.
 
+## 2026-08-23 — CI release pipeline
+
+**What:** `.github/workflows/release.yml` automates the whole release: tag push (`v*`) runs frontend gates, builds the optimized sidecar (with a stdio smoke test), bundles AppImage/deb/rpm, assembles the portable tarball, and publishes a GitHub Release with all four artifacts. Tag/version mismatch fails fast; manual `workflow_dispatch` uploads artifacts to the run instead. Docs §04 §1c.
+
+**Regression hints:** Failed tag build ⇒ check tag matches `tauri.conf.json` version first.
+
 ## 2026-08-23 — App icon, release bundles, portable installer
 
 **What:** First distributable release of niri-settings.

@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CONF=$(grep -o '"version": "[^"]*"' src-tauri/tauri.conf.json | head -1 | cut -d'"' -f4)
+          if [ "$TAG" != "$CONF" ]; then
+            echo "::error::Tag v$TAG does not match tauri.conf.json version $CONF"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sidecar/go.mod
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential curl wget file \
+            libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev \
+            libwebkit2gtk-4.1-dev \
+            patchelf libfuse2
+
+      - name: Frontend gates
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+
+      - name: Build optimized sidecar
+        working-directory: sidecar
+        run: |
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" \
+            -o ../src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu .
+
+      - name: Smoke test sidecar
+        run: |
+          OUT=$(echo '{"command":"read_settings","args":{}}' \
+            | ./src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu)
+          echo "$OUT" | grep -q '"ok":true' || { echo "::error::sidecar smoke test failed: $OUT"; exit 1; }
+
+      - name: Stage sidecar for raw-binary runs and tarball
+        run: |
+          mkdir -p src-tauri/target/release
+          cp src-tauri/binaries/niri-settings-sidecar-x86_64-unknown-linux-gnu \
+             src-tauri/target/release/niri-settings-sidecar
+
+      - name: Build bundles (AppImage / deb / rpm)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_STRIP: "true"
+        run: npx tauri build --bundles appimage deb rpm
+
+      - name: Assemble portable tarball
+        run: ./packaging/make-tarball.sh
+
+      - name: Upload artifacts (manual runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: niri-settings-artifacts
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            release/*.tar.gz
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            release/*.tar.gz
+          generate_release_notes: true
