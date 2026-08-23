@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
@@ -30,7 +30,9 @@ import {
   refreshAudioDevicesAtom,
   setDefaultAudioDeviceAtom,
   testAudioAtom,
+  capabilitiesAtom,
 } from "@/stores";
+import IntegrationNotice from "@/components/settings/IntegrationNotice";
 import type { AudioDevice } from "@/lib/schemas";
 
 const getDeviceIcon = (device: AudioDevice): typeof Volume2 => {
@@ -50,6 +52,7 @@ const SoundPage = (): React.JSX.Element => {
   const setInputMuted = useSetAtom(setInputMutedAtom);
 
   const [audioInfo] = useAtom(audioInfoAtom);
+  const caps = useAtomValue(capabilitiesAtom);
   const [loading] = useAtom(audioLoadingAtom);
   const refreshDevices = useSetAtom(refreshAudioDevicesAtom);
   const setDefaultDevice = useSetAtom(setDefaultAudioDeviceAtom);
@@ -95,6 +98,11 @@ const SoundPage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7">
+          <IntegrationNotice
+            show={!caps.wpctl}
+            title="WirePlumber control not found"
+            message="The wpctl command is unavailable, so volume and device switching have no effect. Install WirePlumber (pipewire) to enable audio controls."
+          />
           {/* ── OUTPUT SECTION ── */}
           <SettingsGroup header="Output Device" accent="var(--color-accent)">
             {/* Device Selection Cards */}

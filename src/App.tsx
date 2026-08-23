@@ -1,6 +1,7 @@
 import {
   appearanceAtom,
   applyThemeToDOM,
+  loadCapabilitiesAtom,
   loadSettingsAtom,
   loadThemeColorsAtom,
   pywalThemeAtom,
@@ -13,13 +14,15 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 const SettingsLoader = (): React.JSX.Element => {
   const loadSettings = useSetAtom(loadSettingsAtom);
   const loadTheme = useSetAtom(loadThemeColorsAtom);
+  const loadCaps = useSetAtom(loadCapabilitiesAtom);
   const [appearance] = useAtom(appearanceAtom);
   const [pywalTheme] = useAtom(pywalThemeAtom);
 
   useEffect(() => {
     void loadSettings();
     void loadTheme();
-  }, [loadSettings, loadTheme]);
+    void loadCaps();
+  }, [loadSettings, loadTheme, loadCaps]);
 
   useEffect(() => {
     applyThemeToDOM(pywalTheme, appearance);

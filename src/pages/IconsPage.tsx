@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle, RotateCcw, Loader2 } from "lucide-react";
@@ -12,7 +12,9 @@ import {
   gsettingErrorAtom,
   iconsBackupAtom,
   restoreIconsBackupAtom,
+  capabilitiesAtom,
 } from "@/stores";
+import IntegrationNotice from "@/components/settings/IntegrationNotice";
 import { listDesktopThemes } from "@/lib/services";
 import type { DesktopTheme, DesktopThemes } from "@/lib/schemas";
 
@@ -93,6 +95,7 @@ const IconsPage = (): React.JSX.Element => {
   const [icons] = useAtom(iconsAtom);
   const [gsettingError] = useAtom(gsettingErrorAtom);
   const [backup] = useAtom(iconsBackupAtom);
+  const caps = useAtomValue(capabilitiesAtom);
   const setIconTheme = useSetAtom(setIconThemeAtom);
   const setCursorTheme = useSetAtom(setCursorThemeAtom);
   const setCursorSize = useSetAtom(setCursorSizeAtom);
@@ -152,6 +155,11 @@ const IconsPage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7 pt-2">
+          <IntegrationNotice
+            show={!caps.quickshell}
+            title="Quickshell not detected"
+            message="Icon theme changes still apply to apps via gsettings, but the top bar integration (instant icon refresh) requires quickshell with a shell.qml config."
+          />
           {!themes && !loadFailed && (
             <div className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface-elevated p-5 text-[12px] text-text-subtitle">
               <Loader2 size={14} className="animate-spin" />

@@ -5,3 +5,4 @@ export * from "./display";
 export * from "./audio";
 export * from "./app";
 export * from "./keybindings";
+export * from "./capabilities";

@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Sun, Moon, Check, RefreshCw, Loader2 } from "lucide-react";
@@ -12,8 +12,10 @@ import {
   pywalThemeAtom,
   themeLoadingAtom,
   loadThemeColorsAtom,
+  capabilitiesAtom,
   deriveThemeTokens,
 } from "@/stores";
+import IntegrationNotice from "@/components/settings/IntegrationNotice";
 
 const CURATED_ACCENTS = [
   "#0a84ff", // Blue
@@ -36,6 +38,7 @@ const AppearancePage = (): React.JSX.Element => {
 
   const [pywalTheme] = useAtom(pywalThemeAtom);
   const [themeLoading] = useAtom(themeLoadingAtom);
+  const caps = useAtomValue(capabilitiesAtom);
   const reloadTheme = useSetAtom(loadThemeColorsAtom);
 
   // Extract unique pywal palette colors
@@ -90,6 +93,11 @@ const AppearancePage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7">
+          <IntegrationNotice
+            show={!caps.apply_theme}
+            title="Wallpaper theme regeneration unavailable"
+            message="The apply-theme helper script was not found in ~/.local/bin. Wallpaper changes still work, but app color palettes won't regenerate until the dotfiles helper scripts are installed."
+          />
           {/* ── ACTIVE PALETTE — the exact tokens applied to this window ── */}
           <div className="rounded-2xl border border-border bg-surface-elevated p-5 flex flex-col gap-3">
             <div className="flex items-center justify-between">

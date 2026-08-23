@@ -1,6 +1,30 @@
 import { invokeRaw } from "../ipc";
 import { sidecarLogger } from "../logger";
-import { DesktopThemesSchema, type DesktopThemes } from "../schemas";
+import {
+  CAPABILITIES_FALLBACK,
+  CapabilitiesSchema,
+  DesktopThemesSchema,
+  type Capabilities,
+  type DesktopThemes,
+} from "../schemas";
+
+// Probes the host for optional integrations (niri IPC, helper scripts,
+// quickshell, wpctl, ...). Falls back to all-false so the UI can degrade
+// gracefully on machines without this dotfiles setup.
+export const getCapabilities = async (): Promise<Capabilities> => {
+  try {
+    const raw = await invokeRaw("get_capabilities", {});
+    const parsed = CapabilitiesSchema.safeParse(raw);
+    if (!parsed.success) {
+      sidecarLogger.error("get_capabilities: unexpected payload", parsed.error);
+      return CAPABILITIES_FALLBACK;
+    }
+    return parsed.data;
+  } catch (err) {
+    sidecarLogger.error("Failed to probe capabilities", err);
+    return CAPABILITIES_FALLBACK;
+  }
+};
 
 export const listDesktopThemes = async (): Promise<DesktopThemes | null> => {
   try {

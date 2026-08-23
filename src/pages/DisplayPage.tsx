@@ -1,4 +1,4 @@
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Monitor, RefreshCw, RotateCw, Check, Move } from "lucide-react";
@@ -24,7 +24,9 @@ import {
   updateOutputTransformAtom,
   updateOutputScaleAtom,
   saveDisplayLayoutAtom,
+  capabilitiesAtom,
 } from "@/stores";
+import IntegrationNotice from "@/components/settings/IntegrationNotice";
 import type { DisplayOutput } from "@/lib/schemas";
 
 const SCALE_KEYS: readonly string[] = ["0.8", "1.0", "1.25", "1.5", "2.0"];
@@ -66,6 +68,7 @@ const DisplayPage = (): React.JSX.Element => {
   const setColorScheme = useSetAtom(setColorSchemeAtom);
 
   const [outputs] = useAtom(displayOutputsAtom);
+  const caps = useAtomValue(capabilitiesAtom);
   const [loading] = useAtom(displayOutputsLoadingAtom);
   const [saving] = useAtom(displaySavingAtom);
   const [selectedName, setSelectedName] = useAtom(selectedOutputNameAtom);
@@ -235,6 +238,19 @@ const DisplayPage = (): React.JSX.Element => {
         </div>
 
         <div className="flex flex-col gap-6 p-7">
+          <IntegrationNotice
+            show={!caps.apply_display_scale || !caps.night_light}
+            title="Some display helpers are missing"
+            message={`${["apply-display-scale", "night-light"]
+              .filter(
+                (script) =>
+                  (script === "apply-display-scale" && !caps.apply_display_scale) ||
+                  (script === "night-light" && !caps.night_light),
+              )
+              .join(
+                " and ",
+              )} not found in ~/.local/bin. Related controls will have no effect until the dotfiles helper scripts are installed.`}
+          />
           {/* ── INTERACTIVE DISPLAY ARRANGER CANVAS ── */}
           <SettingsGroup header="Display Arrangement & Canvas" accent="var(--color-accent)">
             <div className="p-4 bg-surface-elevated">
