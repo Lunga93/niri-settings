@@ -5,6 +5,12 @@ import type { Keybinding } from "@/lib/schemas";
 export const normalizeAction = (action: string): string =>
   action.replace(/["']/g, "").replace(/\s+/g, " ").trim();
 
+const stripArgs = (action: string): string => {
+  const normalized = normalizeAction(action);
+  const spaceIdx = normalized.indexOf(" ");
+  return spaceIdx > 0 ? normalized.substring(0, spaceIdx) : normalized;
+};
+
 export const actionsMatch = (a: string, b: string): boolean => {
   const normA = normalizeAction(a);
   const normB = normalizeAction(b);
@@ -12,6 +18,7 @@ export const actionsMatch = (a: string, b: string): boolean => {
   const spawnA = normA.replace(/^spawn-sh\s+/, "spawn ");
   const spawnB = normB.replace(/^spawn-sh\s+/, "spawn ");
   if (spawnA === spawnB) return true;
+  if (stripArgs(spawnA) === stripArgs(spawnB) && stripArgs(spawnA) !== "spawn") return true;
   return false;
 };
 

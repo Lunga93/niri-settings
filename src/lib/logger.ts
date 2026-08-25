@@ -22,11 +22,6 @@ const MIN_LEVEL: LogLevel = import.meta.env?.DEV ? "debug" : "info";
 const MAX_LOG_HISTORY = 500;
 const logHistory: LogEntry[] = [];
 
-export const getRecentLogs = (): readonly LogEntry[] => logHistory;
-export const clearLogs = (): void => {
-  logHistory.length = 0;
-};
-
 const formatTimestamp = (ts: number): string => {
   return new Date(ts).toISOString().slice(11, 23);
 };

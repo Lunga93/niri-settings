@@ -28,7 +28,6 @@ export default defineConfig(async () => ({
       provider: "v8",
       reporter: ["text", "lcov"],
       include: ["src/lib/**/*.ts"],
-      exclude: ["src/lib/sidecar.ts"],
     },
   },
 }));

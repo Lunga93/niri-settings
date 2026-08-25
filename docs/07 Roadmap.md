@@ -5,7 +5,7 @@ tags: [roadmap, todo]
 # 07 Roadmap
 
 > [!info] For the developing agent
-> This is the working backlog, ordered by priority. Each item lists evidence (`file:line`), the fix, and acceptance criteria. Work top-down; one item ≈ one commit. Read [[01 Architecture]], [[05 Code Standards]], and [[06 Design Brief]] first. **Always rebuild the sidecar after touching `sidecar/**`** — see [[04 Building and Distribution]].
+> This is the working backlog, ordered by priority. Each item lists evidence (`file:line`), the fix, and acceptance criteria. Work top-down; one item ≈ one commit. Read `AGENTS.md` and [[05 Code Standards]] first. **Always rebuild the sidecar after touching `sidecar/**`** — see [[04 Building and Distribution]].
 
 **Verified facts you can rely on (Aug 2026):**
 
@@ -169,7 +169,7 @@ Measured baseline: single 491 KB eager JS bundle; 14 framer-motion importers; ~2
 
 - [ ] Code-split pages: `React.lazy` all eight static page imports (`AppLayout.tsx:7-14`); target initial bundle < 200 KB gz.
 - [ ] Thumbnail pipeline (P0.3) removes the largest IPC payloads.
-- [ ] Persistent sidecar (or request batching): today `mkdir -p && date > file` costs a whole Go process spawn (`atoms.ts:301-307`); gsettings = one spawn per key (`services.ts:127-136`). A long-lived sidecar with framed JSON over stdin/stdout is the architectural goal ([[01 Architecture]] protocol unchanged).
+- [ ] Persistent sidecar (or request batching): today `mkdir -p && date > file` costs a whole Go process spawn; gsettings = one spawn per key. A long-lived sidecar with framed JSON over stdin/stdout is the architectural goal.
 - [ ] Tab switching pays exit-then-enter animation (~0.4 s) via `AnimatePresence mode="wait"` (`AppLayout.tsx:53-67`) **plus** remount refetches through new spawns — switch to `mode="popLayout"`/sync and cache fetched info per session (invalidate on explicit refresh only).
 - [ ] `KeybindingsPage`: all 45 rows subscribe to the entire keybindings atom and regex-normalize per render (`KeybindingsPage.tsx:30-31`); memoize rows, precompute a `Map` (reuse `bindingForAtom`).
 - [ ] Double persistence per toggle: `atomWithStorage` sync-writes full JSON to localStorage **and** spawns a disk write with no change detection (`atoms.ts:17,45,48-50`) — add shallow-equality short-circuit.

@@ -1,6 +1,5 @@
 ---
-tags: [design, brief, requirements]
-up: "[[00 Home]]"
+tags: [design, brief]
 ---
 
 # 06 Design Brief — niri-settings

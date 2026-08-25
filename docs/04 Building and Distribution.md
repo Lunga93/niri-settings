@@ -1,6 +1,5 @@
 ---
-tags: [build, packaging, release]
-up: "[[00 Home]]"
+tags: [building, distribution]
 ---
 
 # 04 Building and Distribution
