@@ -33,6 +33,20 @@ const SCREENSHOTS = [
     description: "Visual keybinding reference with inline editing",
     image: "/screenshots/keybindings.png",
   },
+  {
+    id: "appearance-dark",
+    mood: "sunset",
+    label: "Appearance (Dark)",
+    description: "Pywal color schemes with dynamic accent palettes",
+    image: "/screenshots/appearance-dark.png",
+  },
+  {
+    id: "default-apps-light",
+    mood: "ocean",
+    label: "Default Apps (Light)",
+    description: "Clean light theme with blue accents",
+    image: "/screenshots/default-apps-light.png",
+  },
 ];
 
 function ScreenshotCard({
