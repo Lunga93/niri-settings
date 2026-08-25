@@ -1,5 +1,6 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from "../ThemeContext";
 import { MOOD_PALETTES } from "../palettes";
 
@@ -49,12 +50,115 @@ const SCREENSHOTS = [
   },
 ];
 
+function Lightbox({
+  screenshot,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  screenshot: (typeof SCREENSHOTS)[0];
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}): React.JSX.Element {
+  const palette = MOOD_PALETTES.find((p) => p.name === screenshot.mood)!;
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") onNext();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-6 right-6 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+        aria-label="Close lightbox"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      {/* Prev button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onPrev(); }}
+        className="absolute left-4 md:left-8 z-10 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+        aria-label="Previous screenshot"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+
+      {/* Next button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onNext(); }}
+        className="absolute right-4 md:right-8 z-10 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+        aria-label="Next screenshot"
+      >
+        <ChevronRight className="w-6 h-6" />
+      </button>
+
+      {/* Image container */}
+      <motion.div
+        key={screenshot.id}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="relative z-10 max-w-5xl w-full mx-4 md:mx-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Titlebar mockup */}
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-t-xl" style={{ background: "#1a1a2e" }}>
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-400/80" />
+            <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
+            <div className="w-3 h-3 rounded-full bg-green-400/80" />
+          </div>
+          <span className="flex-1 text-center text-xs text-white/40 font-medium">
+            {screenshot.label}
+          </span>
+        </div>
+        <img
+          src={screenshot.image}
+          alt={screenshot.label}
+          className="w-full h-auto rounded-b-xl shadow-2xl"
+        />
+        <div className="flex items-center justify-between mt-4 px-2">
+          <span className="text-sm font-medium" style={{ color: palette.accentFrom }}>
+            {screenshot.label}
+          </span>
+          <span className="text-xs text-white/40">
+            {screenshot.description}
+          </span>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function ScreenshotCard({
   screenshot,
   index,
+  onClick,
 }: {
   screenshot: (typeof SCREENSHOTS)[0];
   index: number;
+  onClick: () => void;
 }): React.JSX.Element {
   const { setPalette, resetPalette } = useTheme();
   const palette = MOOD_PALETTES.find((p) => p.name === screenshot.mood)!;
@@ -67,6 +171,7 @@ function ScreenshotCard({
       transition={{ duration: 0.5, delay: index * 0.1 }}
       onMouseEnter={() => setPalette(screenshot.mood)}
       onMouseLeave={resetPalette}
+      onClick={onClick}
       className="group relative cursor-pointer"
     >
       {/* Screenshot frame */}
@@ -86,6 +191,13 @@ function ScreenshotCard({
             boxShadow: `inset 0 0 40px ${palette.accentFrom}22, 0 0 30px ${palette.accentFrom}15`,
           }}
         />
+
+        {/* Click hint overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          <div className="px-4 py-2 rounded-lg bg-black/60 text-white text-sm font-medium backdrop-blur-sm">
+            Click to view full size
+          </div>
+        </div>
       </div>
 
       {/* Label */}
@@ -107,6 +219,25 @@ function ScreenshotCard({
 export function ScreenshotGallery(): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const openLightbox = useCallback((index: number) => {
+    setSelectedIndex(index);
+    document.body.style.overflow = "hidden";
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setSelectedIndex(null);
+    document.body.style.overflow = "";
+  }, []);
+
+  const goPrev = useCallback(() => {
+    setSelectedIndex((prev) => (prev === null ? null : (prev - 1 + SCREENSHOTS.length) % SCREENSHOTS.length));
+  }, []);
+
+  const goNext = useCallback(() => {
+    setSelectedIndex((prev) => (prev === null ? null : (prev + 1) % SCREENSHOTS.length));
+  }, []);
 
   return (
     <section id="gallery" className="relative py-32 px-6 overflow-hidden">
@@ -168,6 +299,7 @@ export function ScreenshotGallery(): React.JSX.Element {
               key={screenshot.id}
               screenshot={screenshot}
               index={i}
+              onClick={() => openLightbox(i)}
             />
           ))}
         </div>
@@ -184,6 +316,18 @@ export function ScreenshotGallery(): React.JSX.Element {
           ↑ Hover the screenshots above — watch the whole page change ↑
         </motion.p>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {selectedIndex !== null && (
+          <Lightbox
+            screenshot={SCREENSHOTS[selectedIndex]}
+            onClose={closeLightbox}
+            onPrev={goPrev}
+            onNext={goNext}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
