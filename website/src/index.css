@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* === Dynamic theme variables (default: earth palette) === */
+:root {
+  --site-bg: #0a0a0f;
+  --site-bg-secondary: #0d0d15;
+  --site-card: rgba(255, 255, 255, 0.03);
+  --site-card-border: rgba(255, 255, 255, 0.06);
+  --site-text: #ffffff;
+  --site-text-secondary: #9ca3af;
+  --site-accent-from: #60a5fa;
+  --site-accent-to: #a78bfa;
+  --site-orb-a: rgba(96, 165, 250, 0.2);
+  --site-orb-b: rgba(167, 139, 250, 0.2);
+  --site-icon-bg: rgba(96, 165, 250, 0.2);
+  --site-terminal-bg: #111118;
+  --site-terminal-prompt: #22c55e;
+  --site-terminal-keyword: #60a5fa;
+  --site-terminal-comment: #6b7280;
+
+  /* Transition all theme properties smoothly */
+  transition:
+    background-color 0.7s ease,
+    color 0.7s ease;
+}
+
+/* Apply site-bg to body via the variable */
+body {
+  background-color: var(--site-bg) !important;
+  color: var(--site-text) !important;
+  transition: background-color 0.7s ease, color 0.7s ease;
+}
+
+/* Custom gradient text — gradient uses CSS vars so it updates when vars change.
+   Note: CSS gradients cannot be transitioned (no interpolation), so the color
+   jumps instantly when the palette changes. This is a known CSS limitation. */
+.text-gradient {
+  background: linear-gradient(135deg, var(--site-accent-from) 0%, var(--site-accent-to) 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-blue {
+  box-shadow: 0 0 60px rgba(96, 165, 250, 0.3), 0 0 120px rgba(96, 165, 250, 0.1);
+}
+
+/* Glass morphism */
+.glass {
+  background: var(--site-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--site-card-border);
+  transition:
+    background 0.7s ease,
+    border-color 0.7s ease;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Animated gradient border — @property required for custom property animation */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes gradient-rotate {
+  0% { --angle: 0deg; }
+  100% { --angle: 360deg; }
+}
+
+.animated-border {
+  position: relative;
+  background: var(--site-terminal-bg);
+  border-radius: 16px;
+  transition: background 0.7s ease;
+}
+
+.animated-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    transparent 0%,
+    var(--site-accent-from) 10%,
+    transparent 20%,
+    var(--site-accent-to) 30%,
+    transparent 40%,
+    #f472b6 50%,
+    transparent 60%,
+    var(--site-accent-from) 70%,
+    transparent 80%,
+    var(--site-accent-to) 90%,
+    transparent 100%
+  );
+  z-index: -1;
+  animation: gradient-rotate 6s linear infinite;
+  opacity: 0.6;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Pulse glow */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
