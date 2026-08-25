@@ -45,7 +45,7 @@ export function Developer(): React.JSX.Element {
               {/* Photo placeholder — replace src with actual photo */}
               <div className="absolute inset-[6px] rounded-full overflow-hidden">
                 <img
-                  src="/developer-photo.jpg"
+                  src={`${import.meta.env.BASE_URL}developer-photo.jpg`}
                   alt="Lunga — developer of Niri Settings"
                   className="w-full h-full object-cover"
                 />
